@@ -44,7 +44,7 @@ def patient_navigation(patient_ids):
     # Patient Buttons
     for i, patient in enumerate(visible_patients):
 
-        label = f"Patient {patient}"
+        label = patient
 
         if patient == st.session_state.selected_patient:
             label = f"🟦 {patient}"

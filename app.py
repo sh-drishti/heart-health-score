@@ -4,7 +4,7 @@ import pandas as pd
 from severity import calculate_patient_severity
 from ui import show_domain_summary
 from navigation import patient_navigation
-from config import DOMAINS
+from config import DOMAINS, CONTEXT_VARIABLES, OPTIONAL_MODULES
 
 st.set_page_config(
     page_title="Healthy Heart Score Dashboard",
@@ -13,28 +13,45 @@ st.set_page_config(
 
 st.title("Healthy Heart Score Dashboard")
 
-df = pd.read_csv("cardio_synthetic_50pts_v2.csv")
+df = pd.read_csv("data/cardio_hhs.csv", keep_default_na=False)
 
 patient_ids = df["Patient_ID"].tolist()
 
-col1, col2 = st.columns([8,1])
+with st.form("patient_search"):
 
-with col1:
-    search = st.text_input("Search Patient")
+    col1, col2 = st.columns([8,1])
 
-with col2:
-    st.write("")
-    st.write("")
-    if st.button("Go"):
+    with col1:
 
-        patient_id = int(search)
+        search = st.text_input(
+            "Search Patient",
+            placeholder="e.g. P001"
+        )
 
-        if patient_id in patient_ids:
+    with col2:
 
-            st.session_state.selected_patient = patient_id
-            st.session_state.current_start = patient_id
+        st.write("")
+        st.write("")
 
-            st.rerun()
+        submitted = st.form_submit_button(
+            "Go",
+            use_container_width=True
+        )
+
+if submitted:
+
+    patient_id = search.strip()
+
+    if patient_id in patient_ids:
+
+        st.session_state.selected_patient = patient_id
+        st.session_state.current_start = patient_id
+
+        st.rerun()
+
+    else:
+
+        st.error("Patient not found.")
 
 selected_patient = patient_navigation(patient_ids)
 
@@ -60,7 +77,7 @@ with col2:
 
 with col3:
 
-    sex = "Male" if patient["Biological_Sex"] == 1 else "Female"
+    sex = "Male" if patient["Biological_Sex"] == "Male" else "Female"
 
     st.metric(
         "Biological Sex",
