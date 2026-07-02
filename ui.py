@@ -13,6 +13,7 @@ LABELS = {
     2: "Risk"
 }
 
+
 def draw_rectangles(scores):
 
     html = ""
@@ -52,11 +53,11 @@ def show_parameter_table(features, patient_data):
             display:grid;
             grid-template-columns:4fr 2fr 2fr;
             font-weight:bold;
-            margin-bottom:0.5px;
+            margin-bottom:5px;
         ">
             <div>Parameter</div>
             <div>Value</div>
-            <div>Severity</div>
+            <div align="center">Severity</div>
         </div>
         """,
         unsafe_allow_html=True
@@ -101,8 +102,6 @@ def show_parameter_table(features, patient_data):
                 """,
                 unsafe_allow_html=True
             )
-
-    st.markdown("---")
     
 def show_domain_card(domain_name,weight,features,patient_data):
 
@@ -137,19 +136,16 @@ def show_domain_card(domain_name,weight,features,patient_data):
 
     if weight is not None:
 
-        weight_html = f"""
-        <span style="
-        background:#eeeeee;
-        padding:5px 10px;
-        border-radius:15px;
-        font-weight:bold;
-        font-size:14px;
-        ">
-
-        Weight : {weight}
-
-        </span>
-        """
+        weight_html = (
+            f'<div style="'
+            f'padding:5px 10px;'
+            f'border-radius:15px;'
+            f'font-size:18px;'
+            f'display:inline-block;'
+            f'">'
+            f'Weight : {weight}'
+            f'</div>'
+        )
 
     else:
 
@@ -224,17 +220,78 @@ def show_domain_card(domain_name,weight,features,patient_data):
             patient_data
         )
         
+def get_domain_severity(features, patient_data):
+
+    severities = []
+
+    for feature in features:
+
+        if feature not in patient_data:
+            continue
+
+        severity = patient_data[feature]["severity"]
+
+        if severity is None:
+            continue
+
+        severities.append(severity)
+
+    if len(severities) == 0:
+        return -1
+
+    return max(severities)
+
 def show_domain_summary(patient_data):
 
-    ordered_domains = sorted(
+    sort_mode = st.selectbox(
 
-        DOMAINS.items(),
+    "Sort Domains By",
 
-        key=lambda x: x[1]["weight"],
+    [
 
-        reverse=True
+        "Clinical Priority",
+
+        "HHS Report Weight"
+
+    ],
+
+    index=0
 
     )
+    
+    if sort_mode == "HHS Report Weight":
+
+        ordered_domains = sorted(
+
+            DOMAINS.items(),
+
+            key=lambda x: x[1]["weight"],
+
+            reverse=True
+
+        )
+
+    else:
+
+        ordered_domains = sorted(
+
+            DOMAINS.items(),
+
+            key=lambda x: (
+
+                get_domain_severity(
+                    x[1]["features"],
+                    patient_data
+                ),
+
+                x[1]["weight"]
+
+            ),
+
+            reverse=True
+
+        )
+
 
     legend1, legend2, legend3 = st.columns(3)
 
