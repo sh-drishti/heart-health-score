@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 
+from streamlit_extras.stylable_container import stylable_container
 from severity import calculate_patient_severity
 from ui import show_domain_summary
 from navigation import patient_navigation
@@ -76,7 +77,6 @@ with col2:
     )
 
 with col3:
-
     sex = "Male" if patient["Biological_Sex"] == "Male" else "Female"
 
     st.metric(
@@ -117,6 +117,8 @@ with tab2:
             if feature not in patient_data:
                 continue
 
+            severity = patient_data[feature]["severity"]
+
             table.append({
 
                 "Domain": domain,
@@ -125,18 +127,38 @@ with tab2:
 
                 "Value": patient_data[feature]["value"],
 
-                "Severity": severity_map[
-                    patient_data[feature]["severity"]
-                ]
+                "Severity": severity_map[severity],
+
+                "Severity_Score": severity,
+
+                "Domain_Weight": info["weight"]
 
             })
 
     table = pd.DataFrame(table)
 
+    table = table.sort_values(
+
+        by=["Severity_Score", "Domain_Weight"],
+
+        ascending=[False, False]
+
+    )
+
+    table = table.drop(
+
+        columns=["Severity_Score", "Domain_Weight"]
+
+    )
+
     st.dataframe(
+
         table,
+
         use_container_width=True,
+
         hide_index=True
+
     )
     
 with tab3:

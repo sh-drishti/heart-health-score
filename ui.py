@@ -133,6 +133,7 @@ def show_domain_card(domain_name,weight,features,patient_data):
     color = COLORS[domain_severity]
 
     rectangles = draw_rectangles(scores)
+    parameter_count = len(scores)
 
     if weight is not None:
 
@@ -176,7 +177,7 @@ def show_domain_card(domain_name,weight,features,patient_data):
         <h4 style="
         margin:0;
         ">
-        {domain_name}
+        {domain_name} {f'({parameter_count} Parameters)' if parameter_count > 1 else f'({parameter_count} Parameter)'}
         </h4>
         
         {weight_html}
@@ -213,7 +214,7 @@ def show_domain_card(domain_name,weight,features,patient_data):
         unsafe_allow_html=True
 
         )
-    with st.expander("View Parameters"):
+    with st.expander("View Parameters", expanded=st.session_state.expand_all):
 
         show_parameter_table(
             features,
@@ -242,6 +243,24 @@ def get_domain_severity(features, patient_data):
     return max(severities)
 
 def show_domain_summary(patient_data):
+    
+    col1, col2 = st.columns([1,1])
+
+    with col1:
+
+        if st.button("Expand All"):
+
+            st.session_state.expand_all = True
+
+    with col2:
+
+        if st.button("Collapse All"):
+
+            st.session_state.expand_all = False
+
+    if "expand_all" not in st.session_state:
+
+        st.session_state.expand_all = False
 
     sort_mode = st.selectbox(
 

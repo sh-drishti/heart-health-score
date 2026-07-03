@@ -1,16 +1,6 @@
 import pandas as pd
 
-
-# ==========================================
-# Load Threshold Mapping
-# ==========================================
-
 thresholds = pd.read_excel("data/feature_mapping_hhs.xlsx")
-
-
-# ==========================================
-# Helper Functions
-# ==========================================
 
 def get_feature_metadata(feature, sex="Both"):
     """
@@ -34,11 +24,6 @@ def get_feature_metadata(feature, sex="Both"):
 
     return rows.iloc[0]
 
-
-# ==========================================
-# Numeric Severity
-# ==========================================
-
 def calculate_numeric_severity(value, row):
 
     if row["Normal_Min"] <= value <= row["Normal_Max"]:
@@ -52,10 +37,6 @@ def calculate_numeric_severity(value, row):
 
     return None
 
-
-# ==========================================
-# Categorical Severity
-# ==========================================
 
 def calculate_categorical_severity(value, row):
 
@@ -86,11 +67,6 @@ def calculate_categorical_severity(value, row):
 
     return severity_lookup[category_dict[value]]
 
-
-# ==========================================
-# Master Severity Function
-# ==========================================
-
 def get_severity(feature, value, sex):
 
     row = get_feature_metadata(feature, sex)
@@ -111,11 +87,6 @@ def get_severity(feature, value, sex):
         value,
         row
     )
-
-
-# ==========================================
-# Patient Severity
-# ==========================================
 
 def calculate_patient_severity(patient):
 
