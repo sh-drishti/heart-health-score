@@ -3,14 +3,14 @@ from config import DOMAINS, OPTIONAL_MODULES
 
 COLORS = {
     0: "#4CAF50",
-    1: "#FFC107",
-    2: "#F44336"
+    0.5: "#FFC107",
+    1: "#F44336"
 }
 
 LABELS = {
     0: "Normal",
-    1: "Borderline",
-    2: "Risk"
+    0.5: "Borderline",
+    1: "Risk"
 }
 
 
@@ -121,9 +121,9 @@ def show_domain_card(domain_name,weight,features,patient_data):
         scores.append(severity)
 
     normal_count = scores.count(0)
-    borderline_count = scores.count(1)
-    risk_count = scores.count(2)
-    
+    borderline_count = scores.count(0.5)
+    risk_count = scores.count(1)
+
     if len(scores) == 0:
 
         return
@@ -152,6 +152,11 @@ def show_domain_card(domain_name,weight,features,patient_data):
 
         weight_html = ""
         
+    background_color = ("76,175,80" if domain_severity < 0.33
+        else "255,193,7" if domain_severity < 0.67
+        else "244,67,54"
+    )
+        
     st.markdown(
 
         f"""
@@ -161,10 +166,7 @@ def show_domain_card(domain_name,weight,features,patient_data):
         border-radius:10px;
         box-shadow:0px 0px 8px rgba(0,0,0,0.15);
         margin-bottom:20px;
-        background:rgba(
-            { '76,175,80' if domain_severity==0 else '255,193,7' if domain_severity==1 else '244,67,54' },
-            0.12
-        );
+        background: rgba({background_color}, 0.12);
         border:2px solid {color};
         ">
 

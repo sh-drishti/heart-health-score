@@ -30,10 +30,10 @@ def calculate_numeric_severity(value, row):
         return 0
 
     elif row["Borderline_Min"] <= value <= row["Borderline_Max"]:
-        return 1
+        return 0.5
 
     elif row["Risk_Min"] <= value <= row["Risk_Max"]:
-        return 2
+        return 1
 
     return None
 
@@ -44,8 +44,8 @@ def calculate_categorical_severity(value, row):
 
     severity_lookup = {
         "Normal": 0,
-        "Borderline": 1,
-        "Risk": 2
+        "Borderline": 0.5,
+        "Risk": 1
     }
 
     category_dict = {}

@@ -6,6 +6,7 @@ from severity import calculate_patient_severity
 from ui import show_domain_summary
 from navigation import patient_navigation
 from config import DOMAINS, CONTEXT_VARIABLES, OPTIONAL_MODULES
+from hhs_calc import calculate_hhs
 
 st.set_page_config(
     page_title="Healthy Heart Score Dashboard",
@@ -55,10 +56,9 @@ if submitted:
         st.error("Patient not found.")
 
 selected_patient = patient_navigation(patient_ids)
-
 patient = df[df["Patient_ID"] == selected_patient].iloc[0]
-
 patient_data = calculate_patient_severity(patient)
+hhs_result = calculate_hhs(patient_data)
 
 st.markdown("---")
 
@@ -106,8 +106,8 @@ with tab2:
 
     severity_map = {
         0: "🟩 Normal",
-        1: "🟨 Borderline",
-        2: "🟥 Risk"
+        0.5: "🟨 Borderline",
+        1: "🟥 Risk"
     }
 
     for domain, info in DOMAINS.items():
@@ -163,21 +163,62 @@ with tab2:
     
 with tab3:
 
-    st.subheader(
-        "Doctor Calculated HHS"
+    st.subheader("Calculated Healthy Heart Score")
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+
+        st.metric(
+
+            "Calculated HHS",
+
+            f"{hhs_result['hhs']}"
+
+        )
+
+    with col2:
+
+        category = hhs_result["category"]
+
+        if category == "Healthy":
+            st.success(f"🟢 {category}")
+
+        elif category == "Borderline":
+            st.warning(f"🟡 {category}")
+
+        else:
+            st.error(f"🔴 {category}")
+
+    st.markdown("---")
+
+    agree = st.radio(
+
+        "Do you agree with the predicted category?",
+
+        ["Yes", "No"]
+
     )
 
-    hhs = st.number_input(
+    expected_category = ""
 
-        "Enter HHS",
+    if agree == "No":
 
-        min_value=0,
+        expected_category = st.radio(
 
-        max_value=100,
+            "Expected Category",
 
-        value=0
+            [
 
-    )
+                "Healthy",
+
+                "Borderline",
+
+                "High Risk"
+
+            ]
+
+        )
 
     remarks = st.text_area(
 
@@ -185,29 +226,70 @@ with tab3:
 
     )
 
-    if st.button("Save"):
+    if st.button("Save Assessment"):
 
         new_row = pd.DataFrame([{
-        "Patient_ID": patient["Patient_ID"],
-        "HHS": hhs,
-        "Remarks": remarks
+
+            "Patient_ID": patient["Patient_ID"],
+
+            "Calculated_HHS": hhs_result["hhs"],
+
+            "Predicted_Category": hhs_result["category"],
+
+            "Doctor_Agreement": agree,
+
+            "Doctor_Category": expected_category if agree == "No" else hhs_result["category"],
+
+            "Remarks": remarks
+
         }])
 
         try:
+
             saved = pd.read_csv("saved_hhs.csv")
 
             if patient["Patient_ID"] in saved["Patient_ID"].values:
 
                 saved.loc[
+
                     saved["Patient_ID"] == patient["Patient_ID"],
-                    ["HHS", "Remarks"]
-                ] = [hhs, remarks]
+
+                    [
+
+                        "Calculated_HHS",
+
+                        "Predicted_Category",
+
+                        "Doctor_Agreement",
+
+                        "Doctor_Category",
+
+                        "Remarks"
+
+                    ]
+
+                ] = [
+
+                    hhs_result["hhs"],
+
+                    hhs_result["category"],
+
+                    agree,
+
+                    expected_category if agree == "No" else hhs_result["category"],
+
+                    remarks
+
+                ]
 
             else:
 
                 saved = pd.concat(
+
                     [saved, new_row],
+
                     ignore_index=True
+
                 )
 
         except FileNotFoundError:
@@ -215,8 +297,11 @@ with tab3:
             saved = new_row
 
         saved.to_csv(
+
             "saved_hhs.csv",
+
             index=False
+
         )
 
         st.success("Assessment saved successfully!")
