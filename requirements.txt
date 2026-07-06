@@ -2,3 +2,10 @@ openpyxl
 streamlit
 pandas
 numpy
+streamlit
+pandas
+numpy
+openpyxl
+matplotlib
+scipy
+scikit-learn
