@@ -37,13 +37,19 @@ def draw_rectangles(scores):
 
 def show_parameter_table(features, patient_data):
 
+    def severity_key(feature):
+
+        severity = patient_data[feature]["severity"]
+
+        if severity is None:
+            return (1, 0)
+
+        return (0, -severity)
+
+
     sorted_features = sorted(
-        [
-            feature for feature in features
-            if feature in patient_data
-        ],
-        key=lambda feature: patient_data[feature]["severity"],
-        reverse=True
+        features,
+        key=severity_key
     )
 
     # Column headings

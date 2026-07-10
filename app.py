@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 
 from streamlit_extras.stylable_container import stylable_container
+from adapter import calculate_hhs
 from severity import calculate_patient_severity
 from ui import show_domain_summary
 from navigation import patient_navigation
 from config import DOMAINS, CONTEXT_VARIABLES, OPTIONAL_MODULES
-from hhs_calc import calculate_hhs
 
 st.set_page_config(
     page_title="Healthy Heart Score Dashboard",
@@ -15,7 +15,7 @@ st.set_page_config(
 
 st.title("Healthy Heart Score Dashboard")
 
-df = pd.read_csv("data/cardio_hhs.csv", keep_default_na=False)
+df = pd.read_csv("data/cardio_hhs.csv")
 
 patient_ids = df["Patient_ID"].tolist()
 
@@ -27,7 +27,7 @@ with st.form("patient_search"):
 
         search = st.text_input(
             "Search Patient",
-            placeholder="e.g. P001"
+            placeholder="e.g. SYN-0001"
         )
 
     with col2:
@@ -57,9 +57,10 @@ if submitted:
 
 selected_patient = patient_navigation(patient_ids)
 patient = df[df["Patient_ID"] == selected_patient].iloc[0]
-patient_data = calculate_patient_severity(patient)
-hhs_result = calculate_hhs(patient_data)
 
+patient_data = calculate_patient_severity(patient)
+# hhs_result = calculate_hhs(patient_data)
+official_result = calculate_hhs(patient)
 st.markdown("---")
 
 col1, col2, col3 = st.columns(3)
@@ -96,212 +97,210 @@ tab1, tab2, tab3 = st.tabs(
 
 with tab1:
 
-    show_domain_summary(
-        patient_data
-    )
+    show_domain_summary(patient_data)
 
-with tab2:
+# with tab2:
 
-    table = []
+#     table = []
 
-    severity_map = {
-        0: "🟩 Normal",
-        0.5: "🟨 Borderline",
-        1: "🟥 Risk"
-    }
+#     severity_map = {
+#         0: "🟩 Normal",
+#         0.5: "🟨 Borderline",
+#         1: "🟥 Risk"
+#     }
 
-    for domain, info in DOMAINS.items():
+#     for domain, info in DOMAINS.items():
 
-        for feature in info["features"]:
+#         for feature in info["features"]:
 
-            if feature not in patient_data:
-                continue
+#             if feature not in patient_data:
+#                 continue
 
-            severity = patient_data[feature]["severity"]
+#             severity = patient_data[feature]["severity"]
 
-            table.append({
+#             table.append({
 
-                "Domain": domain,
+#                 "Domain": domain,
 
-                "Parameter": patient_data[feature]["excel_name"],
+#                 "Parameter": patient_data[feature]["excel_name"],
 
-                "Value": patient_data[feature]["value"],
+#                 "Value": patient_data[feature]["value"],
 
-                "Severity": severity_map[severity],
+#                 "Severity": severity_map[severity],
 
-                "Severity_Score": severity,
+#                 "Severity_Score": severity,
 
-                "Domain_Weight": info["weight"]
+#                 "Domain_Weight": info["weight"]
 
-            })
+#             })
 
-    table = pd.DataFrame(table)
+#     table = pd.DataFrame(table)
 
-    table = table.sort_values(
+#     table = table.sort_values(
 
-        by=["Severity_Score", "Domain_Weight"],
+#         by=["Severity_Score", "Domain_Weight"],
 
-        ascending=[False, False]
+#         ascending=[False, False]
 
-    )
+#     )
 
-    table = table.drop(
+#     table = table.drop(
 
-        columns=["Severity_Score", "Domain_Weight"]
+#         columns=["Severity_Score", "Domain_Weight"]
 
-    )
+#     )
 
-    st.dataframe(
+#     st.dataframe(
 
-        table,
+#         table,
 
-        use_container_width=True,
+#         use_container_width=True,
 
-        hide_index=True
+#         hide_index=True
 
-    )
+#     )
     
-with tab3:
+# with tab3:
 
-    st.subheader("Calculated Healthy Heart Score")
+#     st.subheader("Calculated Healthy Heart Score")
 
-    col1, col2 = st.columns([1, 1])
+#     col1, col2 = st.columns([1, 1])
 
-    with col1:
+#     with col1:
 
-        st.metric(
+#         st.metric(
 
-            "Calculated HHS",
+#             "Calculated HHS",
 
-            f"{hhs_result['hhs']}"
+#             f"{hhs_result['hhs']}"
 
-        )
+#         )
 
-    with col2:
+#     with col2:
 
-        category = hhs_result["category"]
+#         category = hhs_result["category"]
 
-        if category == "Healthy":
-            st.success(f"🟢 {category}")
+#         if category == "Healthy":
+#             st.success(f"🟢 {category}")
 
-        elif category == "Borderline":
-            st.warning(f"🟡 {category}")
+#         elif category == "Borderline":
+#             st.warning(f"🟡 {category}")
 
-        else:
-            st.error(f"🔴 {category}")
+#         else:
+#             st.error(f"🔴 {category}")
 
-    st.markdown("---")
+#     st.markdown("---")
 
-    agree = st.radio(
+#     agree = st.radio(
 
-        "Do you agree with the predicted category?",
+#         "Do you agree with the predicted category?",
 
-        ["Yes", "No"]
+#         ["Yes", "No"]
 
-    )
+#     )
 
-    expected_category = ""
+#     expected_category = ""
 
-    if agree == "No":
+#     if agree == "No":
 
-        expected_category = st.radio(
+#         expected_category = st.radio(
 
-            "Expected Category",
+#             "Expected Category",
 
-            [
+#             [
 
-                "Healthy",
+#                 "Healthy",
 
-                "Borderline",
+#                 "Borderline",
 
-                "High Risk"
+#                 "High Risk"
 
-            ]
+#             ]
 
-        )
+#         )
 
-    remarks = st.text_area(
+#     remarks = st.text_area(
 
-        "Doctor Remarks"
+#         "Doctor Remarks"
 
-    )
+#     )
 
-    if st.button("Save Assessment"):
+#     if st.button("Save Assessment"):
 
-        new_row = pd.DataFrame([{
+#         new_row = pd.DataFrame([{
 
-            "Patient_ID": patient["Patient_ID"],
+#             "Patient_ID": patient["Patient_ID"],
 
-            "Calculated_HHS": hhs_result["hhs"],
+#             "Calculated_HHS": hhs_result["hhs"],
 
-            "Predicted_Category": hhs_result["category"],
+#             "Predicted_Category": hhs_result["category"],
 
-            "Doctor_Agreement": agree,
+#             "Doctor_Agreement": agree,
 
-            "Doctor_Category": expected_category if agree == "No" else hhs_result["category"],
+#             "Doctor_Category": expected_category if agree == "No" else hhs_result["category"],
 
-            "Remarks": remarks
+#             "Remarks": remarks
 
-        }])
+#         }])
 
-        try:
+#         try:
 
-            saved = pd.read_csv("saved_hhs.csv")
+#             saved = pd.read_csv("saved_hhs.csv")
 
-            if patient["Patient_ID"] in saved["Patient_ID"].values:
+#             if patient["Patient_ID"] in saved["Patient_ID"].values:
 
-                saved.loc[
+#                 saved.loc[
 
-                    saved["Patient_ID"] == patient["Patient_ID"],
+#                     saved["Patient_ID"] == patient["Patient_ID"],
 
-                    [
+#                     [
 
-                        "Calculated_HHS",
+#                         "Calculated_HHS",
 
-                        "Predicted_Category",
+#                         "Predicted_Category",
 
-                        "Doctor_Agreement",
+#                         "Doctor_Agreement",
 
-                        "Doctor_Category",
+#                         "Doctor_Category",
 
-                        "Remarks"
+#                         "Remarks"
 
-                    ]
+#                     ]
 
-                ] = [
+#                 ] = [
 
-                    hhs_result["hhs"],
+#                     hhs_result["hhs"],
 
-                    hhs_result["category"],
+#                     hhs_result["category"],
 
-                    agree,
+#                     agree,
 
-                    expected_category if agree == "No" else hhs_result["category"],
+#                     expected_category if agree == "No" else hhs_result["category"],
 
-                    remarks
+#                     remarks
 
-                ]
+#                 ]
 
-            else:
+#             else:
 
-                saved = pd.concat(
+#                 saved = pd.concat(
 
-                    [saved, new_row],
+#                     [saved, new_row],
 
-                    ignore_index=True
+#                     ignore_index=True
 
-                )
+#                 )
 
-        except FileNotFoundError:
+#         except FileNotFoundError:
 
-            saved = new_row
+#             saved = new_row
 
-        saved.to_csv(
+#         saved.to_csv(
 
-            "saved_hhs.csv",
+#             "saved_hhs.csv",
 
-            index=False
+#             index=False
 
-        )
+#         )
 
-        st.success("Assessment saved successfully!")
+#         st.success("Assessment saved successfully!")

@@ -16,16 +16,20 @@ def get_feature_metadata(feature, sex="Both"):
 
     # Try exact sex match first
     if sex in rows["Sex"].values:
-        return rows[rows["Sex"] == sex].iloc[0]
+        return rows[rows["Sex"] == sex]
 
     # Otherwise use "Both"
     if "Both" in rows["Sex"].values:
-        return rows[rows["Sex"] == "Both"].iloc[0]
+        return rows[rows["Sex"] == "Both"]
 
-    return rows.iloc[0]
+    return rows
 
 def calculate_numeric_severity(value, row):
 
+    print(row["Feature"])
+    print(value, type(value))
+    print(row["Normal_Min"], type(row["Normal_Min"]))
+    
     if row["Normal_Min"] <= value <= row["Normal_Max"]:
         return 0
 
@@ -74,19 +78,17 @@ def get_severity(feature, value, sex):
     if row is None:
         return None
 
-    # Category mapping exists
-    if row["Direction"] == "CATEGORICAL":
+    for _, r in row.iterrows():
+        if r["Direction"] == "CATEGORICAL":
+            severity = calculate_categorical_severity(value, r)
 
-        return calculate_categorical_severity(
-            value,
-            row
-        )
+        else:
+            severity = calculate_numeric_severity(value, r)
 
-    # Numeric parameter
-    return calculate_numeric_severity(
-        value,
-        row
-    )
+        if severity is not None:
+            return severity
+
+    return None
 
 def calculate_patient_severity(patient):
 
@@ -105,11 +107,13 @@ def calculate_patient_severity(patient):
         if feature in ignore:
             continue
 
+        
         severity = get_severity(
-            feature,
-            patient[feature],
-            sex
-        )
+                feature,
+                patient[feature],
+                sex
+            )
+        
 
         patient_data[feature] = {
 
