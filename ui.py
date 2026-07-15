@@ -1,17 +1,38 @@
 import streamlit as st
-from config import DOMAINS, OPTIONAL_MODULES
+from config import DOMAINS, OFFICIAL_DOMAIN_MAPPING, SECTION_FIELDS
+import pandas as pd
+from adapter import calculate_hhs
 
-COLORS = {
-    0: "#4CAF50",
-    0.5: "#FFC107",
-    1: "#F44336"
-}
+def get_color(severity):
 
-LABELS = {
-    0: "Normal",
-    0.5: "Borderline",
-    1: "Risk"
-}
+    if severity is None:
+        return "#9E9E9E"
+
+    if severity <= 1:
+        if severity < 0.33:
+            return "#4CAF50"
+        elif severity < 0.67:
+            return "#FFC107"
+        else:
+            return "#F44336"
+
+    return "#9E9E9E"
+
+
+def get_label(severity):
+
+    if severity is None:
+        return "N/A"
+
+    if severity <= 1:
+        if severity < 0.33:
+            return "Low"
+        elif severity < 0.67:
+            return "Moderate"
+        else:
+            return "High"
+
+    return "N/A"
 
 
 def draw_rectangles(scores):
@@ -20,7 +41,7 @@ def draw_rectangles(scores):
 
     for score in scores:
 
-        color = COLORS[score]
+        color = get_color(score)
 
         html += f"""
         <div style="
@@ -47,8 +68,13 @@ def show_parameter_table(features, patient_data):
         return (0, -severity)
 
 
+    available_features = [
+        feature for feature in features
+        if feature in patient_data
+    ]
+
     sorted_features = sorted(
-        features,
+        available_features,
         key=severity_key
     )
 
@@ -79,9 +105,16 @@ def show_parameter_table(features, patient_data):
 
         value = info["value"]
 
-        color = COLORS[severity]
-
-        label = LABELS[severity]
+        severity = info["severity"]
+        if pd.isna(value):
+            color = "#9E9E9E"
+            label = "Missing"
+        elif severity is None:
+            color = "#9E9E9E"      # Grey
+            label = "N/A"
+        else:
+            color = get_color(severity)
+            label = get_label(severity)
 
         c1, c2, c3 = st.columns([4,2,2])
 
@@ -89,7 +122,13 @@ def show_parameter_table(features, patient_data):
             st.write(info["excel_name"])
 
         with c2:
-            st.write(value)
+            unit = info.get("unit", "")
+            if pd.isna(value):
+                st.write("--")
+            elif unit:
+                st.write(f"{value} {unit}")
+            else:
+                st.write(value)
 
         with c3:
 
@@ -109,37 +148,34 @@ def show_parameter_table(features, patient_data):
                 unsafe_allow_html=True
             )
     
-def show_domain_card(domain_name,weight,features,patient_data):
+def show_domain_card(domain_name,weight,features,patient_data, official_result):
 
     scores = []
+    available_features = []
 
     for feature in features:
-
         if feature not in patient_data:
             continue
-
+        available_features.append(feature)
         severity = patient_data[feature]["severity"]
-
         if severity is None:
-            print(f"{feature} returned None severity")
             continue
-
         scores.append(severity)
 
     normal_count = scores.count(0)
     borderline_count = scores.count(0.5)
     risk_count = scores.count(1)
 
-    if len(scores) == 0:
-
+    if len(available_features) == 0:
         return
 
-    domain_severity = max(scores)
-
-    color = COLORS[domain_severity]
+    official_domain=OFFICIAL_DOMAIN_MAPPING[domain_name]
+    domain_severity = official_result["domain_severities"][official_domain]
+    contribution = round(weight * domain_severity, 2)
+    color = get_color(domain_severity)
 
     rectangles = draw_rectangles(scores)
-    parameter_count = len(scores)
+    parameter_count = len(available_features)
 
     if weight is not None:
 
@@ -179,15 +215,30 @@ def show_domain_card(domain_name,weight,features,patient_data):
         <div style="
         display:flex;
         justify-content:space-between;
-        align-items:center;
+        align-items:flex-start;
         ">
+
+        <div>
 
         <h4 style="
         margin:0;
         ">
-        {domain_name} {f'({parameter_count} Parameters)' if parameter_count > 1 else f'({parameter_count} Parameter)'}
+        {domain_name}
+        {f'({parameter_count} Parameters)' if parameter_count > 1 else f'({parameter_count} Parameter)'}
         </h4>
-        
+
+        <div style="
+        margin-top:-7px;
+        font-size:15px;
+        ">
+
+        <b>HHS Domain Severity :</b>
+        {domain_severity:.2f}
+
+        </div>
+
+        </div>
+
         {weight_html}
 
         </div>
@@ -225,7 +276,7 @@ def show_domain_card(domain_name,weight,features,patient_data):
     with st.expander("View Parameters", expanded=st.session_state.expand_all):
 
         show_parameter_table(
-            features,
+            available_features,
             patient_data
         )
         
@@ -250,7 +301,7 @@ def get_domain_severity(features, patient_data):
 
     return max(severities)
 
-def show_domain_summary(patient_data):
+def show_domain_summary(patient_data, official_result):
     
     col1, col2 = st.columns([1,1])
 
@@ -343,19 +394,107 @@ def show_domain_summary(patient_data):
 
             info["features"],
 
-            patient_data
+            patient_data,
+            official_result
 
         )
         
+OPTIONAL_MARKER_UNITS = {
+    "CAC": "Agatston",
+    "hsCRP": "mg/L",
+    "PRS_Percentile": "%",
+    "Genetic_Mutation": ""
+}
+
+def show_info_card(title, fields, patient):
+
+    st.subheader(title)
     st.markdown("---")
+    for label, column in fields:
+        if column not in patient.index:
+            continue
+        value = patient[column]
+        color, display = get_badge(value)
+        c1, c2 = st.columns([3,2])
+        with c1:
+            st.write(label)
 
-    st.header("Optional Clinical Modules")
+        with c2:
+            if color is None:
+                unit = OPTIONAL_MARKER_UNITS.get(column, "")
+                if display == "Missing":
+                    st.write(display)
+                elif unit:
+                    st.write(f"{display} {unit}")
+                else:
+                    st.write(display)
+            else:
+                st.markdown(
+                    f"""
+                    <div style="
+                        background:{color};
+                        color:white;
+                        text-align:center;
+                        border-radius:5px;
+                        padding:4px;
+                        font-weight:bold;
+                    ">
+                        {display}
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
-    for module, features in OPTIONAL_MODULES.items():
+    
+def show_additional_information(patient):
 
-        show_domain_card(
-            domain_name=module,
-            weight=None,
-            features=features,
-            patient_data=patient_data
+    st.markdown("---")
+    st.subheader("Additional Clinical Information")
+    col1, col2 = st.columns(2)
+    section_names = list(SECTION_FIELDS.keys())
+    with col1:
+        show_info_card(
+            section_names[0],
+            SECTION_FIELDS[section_names[0]],
+            patient
         )
+    with col2:
+        show_info_card(
+            section_names[2],
+            SECTION_FIELDS[section_names[2]],
+            patient
+        )
+    col3,col4=st.columns(2)
+    with col3:
+        show_info_card(
+            section_names[1],
+            SECTION_FIELDS[section_names[1]],
+            patient
+        )
+    with col4:
+        show_info_card(
+            section_names[3],
+            SECTION_FIELDS[section_names[3]],
+            patient
+        )    
+
+def get_badge(value):
+
+    if pd.isna(value):
+        return None, "Missing"
+
+    value = str(value).strip()
+
+    colors = {
+        "Yes": "#F44336",
+        "No": "#4CAF50",
+        "Unknown": "#9E9E9E",
+        "Concern": "#FFC107",
+        "Available": "#4CAF50",
+        "Not Measured": "#FFC107"
+    }
+
+    if value in colors:
+        return colors[value], value
+
+    return None, value

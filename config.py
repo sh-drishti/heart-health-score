@@ -32,7 +32,6 @@ DOMAINS = {
         "features": [
             "Systolic_BP",
             "Diastolic_BP",
-            "Pulse_Pressure",
             "LVH",
             "Resting_Heart_Rate"
         ]
@@ -53,8 +52,7 @@ DOMAINS = {
         "features": [
             "Fasting_Glucose",
             "HbA1c",
-            "Diabetes_Status",
-            "HOMA_IR"
+            "Diabetes_Status"
         ]
     },
 
@@ -109,32 +107,46 @@ DOMAINS = {
     }
 }
 
-# ==============================
-# Optional Clinical Modules
-# ==============================
+OFFICIAL_DOMAIN_MAPPING = {
+    "Lipid / Atherogenic Particle": "Lipids",
+    "Blood Pressure / Hemodynamic": "Blood Pressure",
+    "Glucose / Diabetes": "Glucose",
+    "Kidney / Vascular Damage": "Kidney",
+    "Adiposity": "Adiposity",
+    "Tobacco": "Tobacco",
+    "Physical Activity": "Activity",
+    "Diet / Nutrition": "Diet",
+    "Behavioral Risk": "Behavioral",
+    "Inherited Risk": "Inherited Risk"
+}
 
-OPTIONAL_MODULES = {
-
-    "Inflammation": [
-
-        "hs_CRP",
-        "Homocysteine",
-        "Fibrinogen"
-
+SECTION_FIELDS = {
+    "Treatment Status": [
+        ("BP Treatment", "BP_Treatment"),
+        ("Lipid Treatment", "Lipid_Treatment"),
+        ("Glucose Treatment", "Glucose_Treatment"),
+        ("Kidney Treatment", "Kidney_Treatment"),
+        ("Medication Adherence", "Medication_Adherence_Concern")
     ],
 
-    "Cardiac Biomarkers": [
-
-        "NT_proBNP",
-        "hs_Troponin"
-
+    "Clinical History": [
+        ("Known MI", "Known_MI"),
+        ("Known Stroke", "Known_Stroke"),
+        ("Known Heart Failure", "Known_Heart_Failure"),
+        ("Known PAD", "Known_PAD")
     ],
 
-    "Imaging": [
+    "Safety Alerts": [
+        ("Chest Pain", "Chest_Pain"),
+        ("Syncope", "Syncope"),
+        ("Severe Dyspnea", "Severe_Dyspnea"),
+        ("Neurologic Deficit", "Neurologic_Deficit")
+    ],
 
-        "CAC_Score",
-        "Carotid_IMT"
-
+    "Optional Advanced Markers": [
+        ("CAC", "CAC"),
+        ("hsCRP", "hsCRP"),
+        ("Genetic Mutation", "Genetic_Mutation"),
+        ("PRS Percentile", "PRS_Percentile")
     ]
-
 }

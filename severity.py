@@ -1,4 +1,5 @@
 import pandas as pd
+from mapping import HHS_FIELD_METADATA, FIELD_MAPPING
 
 thresholds = pd.read_excel("data/feature_mapping_hhs.xlsx")
 
@@ -25,10 +26,6 @@ def get_feature_metadata(feature, sex="Both"):
     return rows
 
 def calculate_numeric_severity(value, row):
-
-    print(row["Feature"])
-    print(value, type(value))
-    print(row["Normal_Min"], type(row["Normal_Min"]))
     
     if row["Normal_Min"] <= value <= row["Normal_Max"]:
         return 0
@@ -66,7 +63,6 @@ def calculate_categorical_severity(value, row):
         category_dict[key.strip()] = val.strip()
 
     if value not in category_dict:
-        print(f"Unknown category '{value}'")
         return None
 
     return severity_lookup[category_dict[value]]
@@ -108,21 +104,17 @@ def calculate_patient_severity(patient):
             continue
 
         
-        severity = get_severity(
-                feature,
-                patient[feature],
-                sex
-            )
-        
+        severity = get_severity(feature, patient[feature], sex)
+        hhs_key=FIELD_MAPPING.get(feature)
+        unit=""
+        if hhs_key in HHS_FIELD_METADATA:
+            unit = HHS_FIELD_METADATA[hhs_key]["unit"]
 
         patient_data[feature] = {
-
             "value": patient[feature],
-
             "severity": severity,
-
-            "excel_name": feature.replace("_", " ")
-
+            "excel_name": feature.replace("_", " "),
+            "unit": unit
         }
 
     return patient_data
