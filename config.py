@@ -3,8 +3,8 @@
 # ==============================
 
 CONTEXT_VARIABLES = [
-    "Age",
-    "Biological_Sex"
+    "age",
+    "biological_sex"
 ]
 
 # ==============================
@@ -16,93 +16,91 @@ DOMAINS = {
     "Lipid / Atherogenic Particle": {
         "weight": 13,
         "features": [
-            "Total_Cholesterol",
-            "LDL_C",
-            "HDL_C",
-            "Non_HDL_C",
-            "Triglycerides",
-            "TC_HDL_Ratio",
-            "ApoB",
-            "Lp_a"
+            "total_cholesterol",
+            "ldl",
+            "hdl",
+            "non_hdl",
+            "triglycerides",
+            "tc_hdl_ratio",
+            "apob",
+            "lpa"
         ]
     },
 
     "Blood Pressure / Hemodynamic": {
         "weight": 10,
         "features": [
-            "Systolic_BP",
-            "Diastolic_BP",
-            "LVH",
-            "Resting_Heart_Rate"
+            "sbp",
+            "dbp",
+            "lvh",
+            "resting_hr"
         ]
     },
 
     "Tobacco": {
         "weight": 9,
         "features": [
-            "Smoking_Status",
-            "Pack_Years",
-            "Years_Since_Quit",
-            "Smokeless_Tobacco"
+            "smoking_status",
+            "pack_years",
+            "years_since_quit",
+            "smokeless_tobacco"
         ]
     },
 
     "Glucose / Diabetes": {
         "weight": 8,
         "features": [
-            "Fasting_Glucose",
-            "HbA1c",
-            "Diabetes_Status"
+            "fasting_glucose",
+            "hba1c",
+            "diabetes"
         ]
     },
 
     "Adiposity": {
         "weight": 8,
         "features": [
-            "BMI",
-            "Waist_Circumference",
-            "Waist_Hip_Ratio"
+            "bmi",
+            "waist",
+            "whr"
         ]
     },
 
     "Inherited Risk": {
         "weight": 6,
         "features": [
-            "Family_History_CVD",
-            "Genetic_Mutation",
-            "PRS_Percentile"
+            "family_history"
         ]
     },
 
     "Kidney / Vascular Damage": {
         "weight": 7,
         "features": [
-            "eGFR",
-            "UACR",
-            "CKD"
+            "egfr",
+            "uacr",
+            "ckd"
         ]
     },
 
     "Physical Activity": {
         "weight": 5,
         "features": [
-            "Physical_Activity"
+            "physical_activity"
         ]
     },
 
     "Diet / Nutrition": {
         "weight": 5,
         "features": [
-            "Dietary_Quality"
+            "diet_score"
         ]
     },
 
     "Behavioral Risk": {
         "weight": 4,
         "features": [
-            "Alcohol",
-            "Sleep_Duration",
-            "Perceived_Stress"
+            "alcohol_audit",
+            "sleep_hours",
+            "stress_score"
         ]
     }
 }
@@ -122,31 +120,31 @@ OFFICIAL_DOMAIN_MAPPING = {
 
 SECTION_FIELDS = {
     "Treatment Status": [
-        ("BP Treatment", "BP_Treatment"),
-        ("Lipid Treatment", "Lipid_Treatment"),
-        ("Glucose Treatment", "Glucose_Treatment"),
-        ("Kidney Treatment", "Kidney_Treatment"),
-        ("Medication Adherence", "Medication_Adherence_Concern")
+        ("BP Treatment", "bp_treatment"),
+        ("Lipid Treatment", "lipid_treatment"),
+        ("Glucose Treatment", "glucose_treatment"),
+        ("Kidney Treatment", "kidney_treatment"),
+        ("Medication Adherence", "adherence_concern")
     ],
 
     "Clinical History": [
-        ("Known MI", "Known_MI"),
-        ("Known Stroke", "Known_Stroke"),
-        ("Known Heart Failure", "Known_Heart_Failure"),
-        ("Known PAD", "Known_PAD")
+        ("Known MI", "known_mi"),
+        ("Known Stroke", "known_stroke"),
+        ("Known Heart Failure", "known_hf"),
+        ("Known PAD", "known_pad")
     ],
 
     "Safety Alerts": [
-        ("Chest Pain", "Chest_Pain"),
-        ("Syncope", "Syncope"),
-        ("Severe Dyspnea", "Severe_Dyspnea"),
-        ("Neurologic Deficit", "Neurologic_Deficit")
+        ("Chest Pain", "chest_pain"),
+        ("Syncope", "syncope"),
+        ("Severe Dyspnea", "severe_dyspnea"),
+        ("Neurologic Deficit", "neuro_deficit")
     ],
 
     "Optional Advanced Markers": [
-        ("CAC", "CAC"),
-        ("hsCRP", "hsCRP"),
-        ("Genetic Mutation", "Genetic_Mutation"),
-        ("PRS Percentile", "PRS_Percentile")
+        ("CAC", "cac"),
+        ("hsCRP", "hscrp"),
+        ("Genetic Mutation", "genetic_mutation"),
+        ("PRS Percentile", "prs_percentile")
     ]
 }

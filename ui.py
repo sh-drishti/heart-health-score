@@ -35,38 +35,13 @@ def get_label(severity):
     return "N/A"
 
 
-def draw_rectangles(scores):
-
-    html = ""
-
-    for score in scores:
-
-        color = get_color(score)
-
-        html += f"""
-        <div style="
-            width:22px;
-            height:18px;
-            background:{color};
-            display:inline-block;
-            margin-right:4px;
-            border-radius:3px;
-        "></div>
-        """
-
-    return html
-
 def show_parameter_table(features, patient_data):
 
     def severity_key(feature):
-
         severity = patient_data[feature]["severity"]
-
         if severity is None:
             return (1, 0)
-
         return (0, -severity)
-
 
     available_features = [
         feature for feature in features
@@ -162,6 +137,13 @@ def show_domain_card(domain_name,weight,features,patient_data, official_result):
             continue
         scores.append(severity)
 
+    if any(score==1 for score in scores):
+        visual_severity=1
+    elif any(score==0.5 for score in scores):
+        visual_severity=0.5
+    else:
+        visual_severity=0
+        
     normal_count = scores.count(0)
     borderline_count = scores.count(0.5)
     risk_count = scores.count(1)
@@ -172,9 +154,7 @@ def show_domain_card(domain_name,weight,features,patient_data, official_result):
     official_domain=OFFICIAL_DOMAIN_MAPPING[domain_name]
     domain_severity = official_result["domain_severities"][official_domain]
     contribution = round(weight * domain_severity, 2)
-    color = get_color(domain_severity)
-
-    rectangles = draw_rectangles(scores)
+    color = get_color(visual_severity)
     parameter_count = len(available_features)
 
     if weight is not None:
@@ -193,9 +173,10 @@ def show_domain_card(domain_name,weight,features,patient_data, official_result):
     else:
 
         weight_html = ""
-        
-    background_color = ("76,175,80" if domain_severity < 0.33
-        else "255,193,7" if domain_severity < 0.67
+
+    background_color = (
+        "76,175,80" if visual_severity == 0
+        else "255,193,7" if visual_severity == 0.5
         else "244,67,54"
     )
         
@@ -243,9 +224,6 @@ def show_domain_card(domain_name,weight,features,patient_data, official_result):
 
         </div>
 
-
-        {rectangles}
-
         <div style="
         display:flex;
         gap:25px;
@@ -271,14 +249,9 @@ def show_domain_card(domain_name,weight,features,patient_data, official_result):
         """,
 
         unsafe_allow_html=True
-
         )
     with st.expander("View Parameters", expanded=st.session_state.expand_all):
-
-        show_parameter_table(
-            available_features,
-            patient_data
-        )
+        show_parameter_table(available_features, patient_data)
         
 def get_domain_severity(features, patient_data):
 
@@ -369,35 +342,65 @@ def show_domain_summary(patient_data, official_result):
             reverse=True
 
         )
+    if "domain_filter" not in st.session_state:
+        st.session_state.domain_filter="All"
+    filter1, filter2, filter3, filter4 = st.columns(4)
+    
+    with filter1:
+        if st.button("All", use_container_width=True):
+            st.session_state.domain_filter = "All"
 
+    with filter2:
+        if st.button("🔴 Risk", use_container_width=True):
+            st.session_state.domain_filter = "Risk"
 
-    legend1, legend2, legend3 = st.columns(3)
+    with filter3:
+        if st.button("🟡 Borderline", use_container_width=True):
+            st.session_state.domain_filter = "Borderline"
 
-    with legend1:
-        st.success("Normal")
-
-    with legend2:
-        st.warning("Borderline")
-
-    with legend3:
-        st.error("Risk")
+    with filter4:
+        if st.button("🟢 Normal", use_container_width=True):
+            st.session_state.domain_filter = "Normal"
 
     st.markdown("---")
 
-    for domain_name, info in ordered_domains:
+    filtered_domains=[]
+    current_filter=st.session_state.domain_filter
+    for domain_name,info in ordered_domains:
+        severity=get_domain_severity(info["features"],patient_data)
+        if current_filter=="Risk" and severity!=1:
+            continue
+        if current_filter=="Borderline" and severity!=0.5:
+            continue
+        if current_filter=="Normal" and severity!=0:
+            continue
+        filtered_domains.append((domain_name,info))
+    if len(filtered_domains)==0:
+        st.info(f"No {current_filter.lower()} domains found.")
+        return
 
-        show_domain_card(
+    for i in range(0, len(filtered_domains), 2):
+        col1, col2 = st.columns(2)
+        domain_name, info = filtered_domains[i]
+        with col1:
+            show_domain_card(
+                domain_name,
+                info["weight"],
+                info["features"],
+                patient_data,
+                official_result
+            )
 
-            domain_name,
-
-            info["weight"],
-
-            info["features"],
-
-            patient_data,
-            official_result
-
-        )
+        if i + 1 < len(filtered_domains):
+            domain_name, info = filtered_domains[i + 1]
+            with col2:
+                show_domain_card(
+                    domain_name,
+                    info["weight"],
+                    info["features"],
+                    patient_data,
+                    official_result
+                )
         
 OPTIONAL_MARKER_UNITS = {
     "CAC": "Agatston",
@@ -420,7 +423,9 @@ def show_info_card(title, fields, patient):
             st.write(label)
 
         with c2:
-            if color is None:
+            if label=="Genetic Mutation":
+                st.write(display)
+            elif color is None:
                 unit = OPTIONAL_MARKER_UNITS.get(column, "")
                 if display == "Missing":
                     st.write(display)
@@ -498,3 +503,87 @@ def get_badge(value):
         return colors[value], value
 
     return None, value
+
+def show_clinical_validation(official_result):
+    st.markdown("---")
+    st.subheader("Clinical Validation")
+    
+    col1,col2=st.columns([2,2])
+    with col1:
+        st.metric(
+            "Calculated Healthy Heart Score",
+            official_result["hhs"]
+        )
+        st.metric(
+            "Confidence",
+            official_result["confidence_label"]
+        )
+
+        agreement = st.radio(
+            "Does the calculated Healthy Heart Score match your clinical assessment?",
+            ["Yes", "No"],
+            horizontal=True,
+            key="doctor_agreement"
+        )
+
+        if agreement == "No":
+            st.number_input(
+                "Doctor's Healthy Heart Score",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(official_result["hhs"]),
+                step=0.5,
+                key="doctor_hhs"
+            )
+
+            st.text_area(
+                "Reason (Optional)",
+                placeholder="Explain why you modified the calculated HHS...",
+                height=100,
+                key="doctor_reason"
+            )
+
+        if st.button(
+            "Save Assessment",
+            type="primary",
+            use_container_width=False
+        ):
+            validation = {
+                "agreement":
+                    st.session_state.doctor_agreement,
+                "calculated_hhs":
+                    official_result["hhs"],
+                "doctor_hhs":
+                    (
+                        official_result["hhs"]
+                        if st.session_state.doctor_agreement == "Yes"
+                        else st.session_state.doctor_hhs
+                    ),
+
+                "reason":
+                    (
+                        ""
+                        if st.session_state.doctor_agreement == "Yes"
+                        else st.session_state.doctor_reason
+                    )
+
+            }
+            st.session_state.validation = validation
+            st.success("Assessment saved successfully.")
+        
+    with col2:
+        st.markdown("#### Healthy Heart Score Guide")
+        st.table(
+            {
+                "Category": [
+                    "🟩 Healthy",
+                    "🟨 Borderline",
+                    "🟥 High Risk"
+                ],
+                "Score": [
+                    "80–100",
+                    "60–79",
+                    "<60"
+                ]
+            }
+        )

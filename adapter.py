@@ -1,4 +1,5 @@
-from mapping import FIELD_MAPPING, HHS_FIELD_METADATA
+from mapping import HHS_FIELD_METADATA
+import pandas as pd
 from hhs_v1_2_ui_app import FieldRecord, HHSManualScorer
 
 
@@ -10,26 +11,16 @@ def create_hhs_input(patient):
 
     fields = {}
 
-    for csv_name, hhs_key in FIELD_MAPPING.items():
+    for hhs_key,meta in HHS_FIELD_METADATA.items():
 
-        if hhs_key not in ["patient_id", "age", "biological_sex"]:
+        if hhs_key in ["patient_id", "age", "biological_sex"]:
             continue
-        if csv_name not in patient.index:
+        if hhs_key not in patient.index:
             continue
 
-        meta = HHS_FIELD_METADATA[hhs_key]
+        value = patient[hhs_key]
 
-        value = patient[csv_name]
-
-        # Handle missing values
-        if value is None:
-            status = "Missing"
-        else:
-            try:
-                import pandas as pd
-                status = "Missing" if pd.isna(value) else "Available"
-            except:
-                status = "Available"
+        status = "Missing" if pd.isna(value) else "Available"
 
         fields[hhs_key] = FieldRecord(
 
@@ -51,9 +42,9 @@ def create_hhs_input(patient):
 
         "fields": fields,
 
-        "age": int(patient["Age"]),
+        "age": int(patient["age"]),
 
-        "sex": str(patient["Biological_Sex"]),
+        "sex": str(patient["biological_sex"]),
 
         # Change later if your dataset stores nmol/L
         "lpa_unit": "mg/dL"
@@ -68,6 +59,8 @@ def calculate_hhs(patient):
 
     hhs_input = create_hhs_input(patient)
 
+    print(sorted(hhs_input["fields"].keys()))
+    print(f"Number of fields passed: {len(hhs_input['fields'])}")
     scorer = HHSManualScorer(
 
         hhs_input["fields"],

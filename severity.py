@@ -1,5 +1,5 @@
 import pandas as pd
-from mapping import HHS_FIELD_METADATA, FIELD_MAPPING
+from mapping import HHS_FIELD_METADATA
 
 thresholds = pd.read_excel("data/feature_mapping_hhs.xlsx")
 
@@ -54,12 +54,9 @@ def calculate_categorical_severity(value, row):
     mappings = mapping.split(";")
 
     for item in mappings:
-
         if "=" not in item:
             continue
-
         key, val = item.split("=")
-
         category_dict[key.strip()] = val.strip()
 
     if value not in category_dict:
@@ -90,12 +87,12 @@ def calculate_patient_severity(patient):
 
     patient_data = {}
 
-    sex = patient["Biological_Sex"]
+    sex = patient["biological_sex"]
 
     ignore = [
         "Patient_ID",
-        "Age",
-        "Biological_Sex"
+        "age",
+        "biological_sex"
     ]
 
     for feature in patient.index:
@@ -103,12 +100,11 @@ def calculate_patient_severity(patient):
         if feature in ignore:
             continue
 
-        
         severity = get_severity(feature, patient[feature], sex)
-        hhs_key=FIELD_MAPPING.get(feature)
+        # hhs_key=FIELD_MAPPING.get(feature)
         unit=""
-        if hhs_key in HHS_FIELD_METADATA:
-            unit = HHS_FIELD_METADATA[hhs_key]["unit"]
+        if feature in HHS_FIELD_METADATA:
+            unit = HHS_FIELD_METADATA[feature]["unit"]
 
         patient_data[feature] = {
             "value": patient[feature],

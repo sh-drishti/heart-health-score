@@ -2,7 +2,6 @@ import streamlit as st
 
 PATIENTS_VISIBLE = 10
 
-
 def patient_navigation(patient_ids):
 
     total_patients = len(patient_ids)
@@ -44,19 +43,18 @@ def patient_navigation(patient_ids):
     # Patient Buttons
     for i, patient in enumerate(visible_patients):
 
-        label = patient
-
+        patient_number=start_index+i+1
+        label = str(patient_number)
         if patient == st.session_state.selected_patient:
-            label = f"🟦 {patient}"
+            label = f"🟦 {patient_number}"
 
         with cols[i + 2]:
 
             if st.button(
                 label,
-                key=f"patient_{patient}",
+                key=f"patient_{i}",
                 use_container_width=True
             ):
-
                 st.session_state.selected_patient = patient
                 st.session_state.current_start = patient
                 st.rerun()
