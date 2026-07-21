@@ -1,7 +1,7 @@
 import pandas as pd
 from mapping import HHS_FIELD_METADATA
 
-thresholds = pd.read_excel("data/feature_mapping_hhs.xlsx")
+thresholds = pd.read_excel("data/feature_mapping_hhs_2.xlsx")
 
 def get_feature_metadata(feature, sex="Both"):
     """
@@ -40,6 +40,9 @@ def calculate_numeric_severity(value, row):
 
 
 def calculate_categorical_severity(value, row):
+    
+    if value=="Unknown":
+        return None
 
     mapping = str(row["Category_Mapping"])
 
@@ -64,8 +67,18 @@ def calculate_categorical_severity(value, row):
 
     return severity_lookup[category_dict[value]]
 
-def get_severity(feature, value, sex):
+SMOKING_FEATURES = {
+    "pack_years",
+    "years_since_quit",
+    "smokeless_tobacco"
+}
 
+def get_severity(feature, value, sex, patient):
+
+    # Context overrides
+    if (feature in SMOKING_FEATURES and patient["smoking_status"] == "Never"):
+        return 0
+        
     row = get_feature_metadata(feature, sex)
 
     if row is None:
@@ -84,23 +97,18 @@ def get_severity(feature, value, sex):
     return None
 
 def calculate_patient_severity(patient):
-
     patient_data = {}
-
     sex = patient["biological_sex"]
-
     ignore = [
         "Patient_ID",
         "age",
         "biological_sex"
     ]
-
+    
     for feature in patient.index:
-
         if feature in ignore:
             continue
-
-        severity = get_severity(feature, patient[feature], sex)
+        severity = get_severity(feature, patient[feature], sex, patient)
         # hhs_key=FIELD_MAPPING.get(feature)
         unit=""
         if feature in HHS_FIELD_METADATA:

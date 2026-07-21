@@ -15,6 +15,35 @@ st.set_page_config(
     layout="wide"
 )
 
+st.markdown("""
+<style>
+
+/* Sticky Patient Header */
+.stMainBlockContainer > div > div:nth-child(8) {
+    position: sticky;
+    top: 3.8rem;
+    background:black;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    margin-bottom: 5px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# st.markdown("""
+# <style>
+# .sticky-header {
+#     position: sticky;
+#     top: 0;
+#     z-index: 999;
+#     background-color: white;
+#     padding: 0.5rem 0;
+#     border-bottom: 1px solid #ddd;
+# }
+# </style>
+# """, unsafe_allow_html=True)
+
 st.title("Healthy Heart Score Dashboard")
 
 df = pd.read_csv("data/cardio_hhs_2.csv")
@@ -51,6 +80,12 @@ patient_data = calculate_patient_severity(patient)
 # hhs_result = calculate_hhs(patient_data)
 official_result = calculate_hhs(patient)
 st.markdown("---")
+st.markdown('<div class="sticky-header>', unsafe_allow_html=True)
+
+st.markdown(
+    '<div id="patient-header-anchor"></div>',
+    unsafe_allow_html=True
+)
 
 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -78,8 +113,8 @@ with col4:
     
 with col5:
     st.metric("Confidence",f'{official_result["data_confidence"]}%')
-
-st.markdown("---")
+    
+st.markdown("</div>", unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(
     [

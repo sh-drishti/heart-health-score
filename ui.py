@@ -409,7 +409,7 @@ OPTIONAL_MARKER_UNITS = {
     "Genetic_Mutation": ""
 }
 
-def show_info_card(title, fields, patient):
+def show_info_card(title, fields, patient, style="badge"):
 
     st.subheader(title)
     st.markdown("---")
@@ -423,32 +423,60 @@ def show_info_card(title, fields, patient):
             st.write(label)
 
         with c2:
-            if label=="Genetic Mutation":
-                st.write(display)
-            elif color is None:
+            # Treatment Status
+            if style == "badge":
+
+                if color is None:
+                    st.write(display)
+                else:
+                    st.markdown(
+                        f"""
+                        <div style="
+                            background:{color};
+                            color:white;
+                            text-align:center;
+                            border-radius:5px;
+                            padding:4px;
+                            font-weight:bold;
+                        ">
+                            {display}
+                        </div>
+                        """,
+                        unsafe_allow_html=True
+                    )
+
+            # Safety Alerts
+            elif style == "alert":
+                if display == "Yes":
+                    st.markdown("⚠ **Present**")
+                elif display == "No":
+                    st.markdown("✅ None")
+                else:
+                    st.markdown("⚪ Unknown")
+
+            # Clinical History
+            
+            elif style == "history":
+                if display == "Yes":
+                    st.markdown("❤️ Present")
+                elif display == "No":
+                    st.markdown("— None")
+                else:
+                    st.markdown("⚪ Unknown")
+
+            # Advanced Markers
+            elif style == "value":
+
                 unit = OPTIONAL_MARKER_UNITS.get(column, "")
+
                 if display == "Missing":
                     st.write(display)
+
                 elif unit:
                     st.write(f"{display} {unit}")
+
                 else:
                     st.write(display)
-            else:
-                st.markdown(
-                    f"""
-                    <div style="
-                        background:{color};
-                        color:white;
-                        text-align:center;
-                        border-radius:5px;
-                        padding:4px;
-                        font-weight:bold;
-                    ">
-                        {display}
-                    </div>
-                    """,
-                    unsafe_allow_html=True
-                )
 
     
 def show_additional_information(patient):
@@ -461,26 +489,26 @@ def show_additional_information(patient):
         show_info_card(
             section_names[0],
             SECTION_FIELDS[section_names[0]],
-            patient
+            patient, "badge"
         )
     with col2:
         show_info_card(
             section_names[2],
             SECTION_FIELDS[section_names[2]],
-            patient
+            patient, "alert"
         )
     col3,col4=st.columns(2)
     with col3:
         show_info_card(
             section_names[1],
             SECTION_FIELDS[section_names[1]],
-            patient
+            patient, "history"
         )
     with col4:
         show_info_card(
             section_names[3],
             SECTION_FIELDS[section_names[3]],
-            patient
+            patient, "value"
         )    
 
 def get_badge(value):

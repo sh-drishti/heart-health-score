@@ -22,20 +22,19 @@ def create_hhs_input(patient):
 
         status = "Missing" if pd.isna(value) else "Available"
 
+        months_col = f"{hhs_key}_months_old"
+        if months_col in patient.index:
+            months_old = patient[months_col]
+        else:
+            months_old = 0
+
         fields[hhs_key] = FieldRecord(
-
             domain=meta["domain"],
-
             label=meta["label"],
-
             value=value,
-
             unit=meta["unit"],
-
             status=status,
-
-            months_old=0
-
+            months_old=months_old
         )
 
     return {
