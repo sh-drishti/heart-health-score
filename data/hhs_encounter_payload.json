@@ -53,7 +53,7 @@
     {
       "domain": "Glucose",
       "label": "Fasting glucose",
-      "value": null,
+      "value": 95,
       "unit": "mg/dL",
       "status": "Unknown",
       "months_old": null

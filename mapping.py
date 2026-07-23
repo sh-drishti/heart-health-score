@@ -117,6 +117,10 @@ HHS_FIELD_METADATA = {
     "triglycerides": {"domain": "Lipids", "label": "Triglycerides", "unit": "mg/dL"},
     "lpa": {"domain": "Lipids", "label": "Lp(a)", "unit": "mg/dL or nmol/L"},
 
+    "resting_hr": {"domain": "Blood Pressure","label": "Resting heart rate", "unit": "bpm"},
+    "total_cholesterol": {"domain": "Lipids", "label": "Total cholesterol", "unit": "mg/dL"},
+    "hdl": {"domain": "Lipids", "label": "HDL-C", "unit": "mg/dL"},
+
     "hba1c": {"domain": "Glucose", "label": "HbA1c", "unit": "%"},
     "fasting_glucose": {"domain": "Glucose", "label": "Fasting glucose", "unit": "mg/dL"},
     "diabetes": {"domain": "Glucose", "label": "Known diabetes", "unit": ""},

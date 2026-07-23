@@ -92,10 +92,14 @@ def show_parameter_table(features, patient_data):
             label = get_label(severity)
 
         c1, c2, c3 = st.columns([4,2,2])
+        
+        print(info)
 
         with c1:
             st.write(info["excel_name"])
 
+        print (type(value),value)
+        
         with c2:
             unit = info.get("unit", "")
             if pd.isna(value):
@@ -103,7 +107,7 @@ def show_parameter_table(features, patient_data):
             elif unit:
                 st.write(f"{value} {unit}")
             else:
-                st.write(value)
+                st.write(str(value))
 
         with c3:
 

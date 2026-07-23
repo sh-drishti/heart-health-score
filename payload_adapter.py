@@ -18,6 +18,7 @@ def payload_to_patient(payload):
     visit = payload["visit"]
 
     patient["patient_id"] = visit["patient_id"]
+    patient["Patient_ID"]=visit["patient_id"]
     patient["age"] = visit["age"]
     patient["biological_sex"] = visit["biological_sex"]
 
@@ -37,14 +38,16 @@ def payload_to_patient(payload):
         patient[f"{key}_status"] = feed["status"]
 
     return {
-        "patient": patient,
+        "patient": pd.Series(patient),
         "assessment": payload["assessment"],
         "visit": payload["visit"],
-        "clinician_note": payload.get("clinician_note")
+        "clinician_note": payload.get("clinician_note","")
     }
 
 with open("data/hhs_encounter_payload.json", "r") as f:
     payload = json.load(f)
 patient=payload_to_patient(payload)
 for k, v in patient.items():
-    print(f"{k}: {v}")
+    if v is None:
+        print(k, "is None")
+    # print(f"{k}: {v}")

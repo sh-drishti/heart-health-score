@@ -9,6 +9,11 @@ from navigation import patient_navigation
 from config import DOMAINS, CONTEXT_VARIABLES
 from tab2 import show_tab2
 from tab3 import show_tab3
+from database import EncounterRepository
+from payload_adapter import payload_to_patient
+
+DATA_SOURCE = "csv"
+#DATA_SOURCE = "payload"
 
 st.set_page_config(
     page_title="Healthy Heart Score Dashboard",
@@ -17,8 +22,6 @@ st.set_page_config(
 
 st.markdown("""
 <style>
-
-/* Sticky Patient Header */
 .stMainBlockContainer > div > div:nth-child(8) {
     position: sticky;
     top: 3.8rem;
@@ -31,25 +34,14 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# st.markdown("""
-# <style>
-# .sticky-header {
-#     position: sticky;
-#     top: 0;
-#     z-index: 999;
-#     background-color: white;
-#     padding: 0.5rem 0;
-#     border-bottom: 1px solid #ddd;
-# }
-# </style>
-# """, unsafe_allow_html=True)
-
 st.title("Healthy Heart Score Dashboard")
 
-df = pd.read_csv("data/cardio_hhs_2.csv")
-
-patient_ids = df["Patient_ID"].tolist()
-
+if DATA_SOURCE=="csv":
+    df = pd.read_csv("data/cardio_hhs_2.csv")
+    patient_ids = df["Patient_ID"].tolist()
+else:
+    repo=EncounterRepository()
+    patient_ids=repo.get_all_patients()
 with st.form("patient_search"):
 
     col1, col2 = st.columns([8,1])
@@ -73,12 +65,24 @@ if submitted:
     else:
         st.error("Patient not found.")
 
-selected_patient = patient_navigation(patient_ids)
-patient = df[df["Patient_ID"] == selected_patient].iloc[0]
+if DATA_SOURCE == "csv":
+
+    selected_patient = patient_navigation(patient_ids)
+    patient = df[df["Patient_ID"] == selected_patient].iloc[0]
+    official_result = calculate_hhs(patient)
+
+else:
+
+    repo=EncounterRepository()
+    patients=repo.get_all_patients()
+    selected_patient=patient_navigation(patient_ids)
+    payload=repo.get_payload(selected_patient)
+    # st.write(payload)
+    dashboard_data = payload_to_patient(payload)
+    patient = dashboard_data["patient"]
+    official_result = dashboard_data["assessment"]
 
 patient_data = calculate_patient_severity(patient)
-# hhs_result = calculate_hhs(patient_data)
-official_result = calculate_hhs(patient)
 st.markdown("---")
 st.markdown('<div class="sticky-header>', unsafe_allow_html=True)
 

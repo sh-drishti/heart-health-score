@@ -12,7 +12,7 @@ def get_feature_metadata(feature, sex="Both"):
     rows = thresholds[thresholds["Feature"] == feature]
 
     if rows.empty:
-        print(f"Feature not found : {feature}")
+        # print(f"Feature not found : {feature}")
         return None
 
     # Try exact sex match first
@@ -108,16 +108,33 @@ def calculate_patient_severity(patient):
     for feature in patient.index:
         if feature in ignore:
             continue
+        
+        value=patient[feature]
+        if value is None:
+            patient_data[feature]={
+                "value":None,
+                "severity":None,
+                "status":"Unknown"
+            }
+            continue
         severity = get_severity(feature, patient[feature], sex, patient)
         # hhs_key=FIELD_MAPPING.get(feature)
-        unit=""
+        unit = ""
+        excel_name = feature.replace("_", " ")
+
         if feature in HHS_FIELD_METADATA:
             unit = HHS_FIELD_METADATA[feature]["unit"]
+            excel_name = HHS_FIELD_METADATA[feature]["label"]
+
+        if value is None:
+            severity = None
+        else:
+            severity = get_severity(feature, value, sex, patient)
 
         patient_data[feature] = {
-            "value": patient[feature],
+            "value": value,
             "severity": severity,
-            "excel_name": feature.replace("_", " "),
+            "excel_name": excel_name,
             "unit": unit
         }
 
