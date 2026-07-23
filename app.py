@@ -12,8 +12,8 @@ from tab3 import show_tab3
 from database import EncounterRepository
 from payload_adapter import payload_to_patient
 
-DATA_SOURCE = "csv"
-#DATA_SOURCE = "payload"
+#DATA_SOURCE = "csv"
+DATA_SOURCE = "payload"
 
 st.set_page_config(
     page_title="Healthy Heart Score Dashboard",

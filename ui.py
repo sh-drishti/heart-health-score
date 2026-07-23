@@ -93,10 +93,12 @@ def show_parameter_table(features, patient_data):
 
         c1, c2, c3 = st.columns([4,2,2])
         
+        print(feature)
         print(info)
 
         with c1:
             st.write(info["excel_name"])
+            
 
         print (type(value),value)
         

@@ -110,26 +110,25 @@ def calculate_patient_severity(patient):
             continue
         
         value=patient[feature]
+        
+        metadata=HHS_FIELD_METADATA.get(feature,{})
+        excel_name=metadata.get("label",feature.replace("_"," ").title())
+        unit=metadata.get("unit","")
+        if feature in HHS_FIELD_METADATA:
+            unit = HHS_FIELD_METADATA[feature]["unit"]
+            excel_name = HHS_FIELD_METADATA[feature]["label"]
+        
         if value is None:
             patient_data[feature]={
                 "value":None,
                 "severity":None,
-                "status":"Unknown"
+                "status":"Unknown",
+                "excel_name":excel_name,
+                "unit":unit
             }
             continue
-        severity = get_severity(feature, patient[feature], sex, patient)
-        # hhs_key=FIELD_MAPPING.get(feature)
-        unit = ""
-        excel_name = feature.replace("_", " ")
-
-        if feature in HHS_FIELD_METADATA:
-            unit = HHS_FIELD_METADATA[feature]["unit"]
-            excel_name = HHS_FIELD_METADATA[feature]["label"]
-
-        if value is None:
-            severity = None
-        else:
-            severity = get_severity(feature, value, sex, patient)
+        
+        severity = get_severity(feature, value, sex, patient)
 
         patient_data[feature] = {
             "value": value,
