@@ -84,8 +84,8 @@ function App() {
         </div>
       </header>
 
-      <div className="max-w-[1600px] mx-auto px-6 py-5 flex flex-col lg:flex-row gap-5 items-start">
-        <aside className="w-full lg:w-60 shrink-0 lg:sticky lg:top-20 lg:h-[calc(100vh-6.5rem)] max-h-72 lg:max-h-none">
+      <div className="flex flex-col lg:flex-row items-start">
+        <aside className="w-full lg:w-64 shrink-0 bg-card border-b lg:border-b-0 lg:border-r max-h-72 lg:max-h-none lg:sticky lg:top-[61px] lg:h-[calc(100vh-61px)]">
           <PatientDirectory
             patientIds={ids}
             selectedPatient={selectedPatient}
@@ -93,7 +93,7 @@ function App() {
           />
         </aside>
 
-        <main className="flex-1 min-w-0">
+        <main className="flex-1 min-w-0 w-full max-w-[1200px] mx-auto px-6 py-5">
           {err && (
             <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               {err}
@@ -107,7 +107,7 @@ function App() {
 
           {bundle && (
             <>
-              <div className="sticky top-16 lg:top-20 z-10 -mx-2 px-2 py-2 bg-background/90 backdrop-blur">
+              <div className="sticky top-[69px] lg:top-[69px] z-10 -mx-2 px-2 py-2 bg-background/90 backdrop-blur">
                 <PatientHeader bundle={bundle} />
               </div>
 
@@ -145,7 +145,7 @@ function App() {
         </main>
 
         {bundle && (
-          <aside className="w-full lg:w-80 shrink-0 lg:sticky lg:top-20">
+          <aside className="w-full lg:w-80 shrink-0 px-6 lg:px-0 lg:pr-5 pb-5 lg:pb-0 lg:py-5 lg:sticky lg:top-[61px]">
             <ClinicalNotes
               patientId={String(bundle.patient.Patient_ID)}
               initialNote={bundle.clinician_note ?? ''}

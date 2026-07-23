@@ -19,8 +19,8 @@ export function PatientDirectory({ patientIds, selectedPatient, onSelect }: Prop
   }, [patientIds, query])
 
   return (
-    <div className="flex flex-col h-full rounded-xl border bg-card shadow-xs overflow-hidden">
-      <div className="p-3 border-b space-y-2">
+    <div className="flex flex-col h-full">
+      <div className="px-4 pt-4 pb-3 space-y-3">
         <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           <Users className="h-3.5 w-3.5" />
           Patients
@@ -37,7 +37,7 @@ export function PatientDirectory({ patientIds, selectedPatient, onSelect }: Prop
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-1.5">
+      <div className="flex-1 overflow-y-auto px-2 pb-3">
         {filtered.length === 0 ? (
           <p className="text-xs text-muted-foreground text-center py-6">
             No patients match “{query}”.
