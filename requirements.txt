@@ -1,11 +1,10 @@
 openpyxl
 streamlit
+streamlit-extras
 pandas
 numpy
-streamlit
-pandas
-numpy
-openpyxl
 matplotlib
 scipy
 scikit-learn
+pymongo
+python-dotenv
