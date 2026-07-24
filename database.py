@@ -21,12 +21,22 @@ class EncounterRepository:
     def create_patient(self,patient_id):
         patients_collection.insert_one({
             "patient_id":patient_id,
-            "encounter_timestamp":datetime.now(timezone.utc),
+            "created_at":datetime.now(timezone.utc),
             "active":True
         })
 
+    def upsert_patient(self,patient_id):
+        patients_collection.update_one(
+            {"patient_id":patient_id},
+            {
+                "$set": {"active": True},
+                "$setOnInsert": {"created_at": datetime.now(timezone.utc)}
+            },
+            upsert=True
+        )
+
     def create_encounter(self,encounter):
-        encounters_collection.insert_one(encounter)
+        return encounters_collection.insert_one(encounter)
     
     def get_payload(self, patient_id, visit_id=None):
         
@@ -61,16 +71,17 @@ class EncounterRepository:
             ).sort("encounter_timestamp",-1)
         )
     
-    def save_payload(self,payload):
+    def save_payload(self,payload, encounter_timestamp=None):
         visit=payload["visit"]
         patient_id=visit["patient_id"]
-        if not self.patient_exists(patient_id):
-            self.create_patient(patient_id)
+        self.upsert_patient(patient_id)
+        timestamp=encounter_timestamp or datetime.now(timezone.utc)
         encounter={
             "patient_id":patient_id,
             "visit_id":visit["visit_id"],
-            "encounter_timestamp":datetime.now(timezone.utc),
+            "encounter_timestamp":timestamp,
             "payload":payload
         }
-        self.create_encounter(encounter)
+        result=self.create_encounter(encounter)
+        return str(result.inserted_id)
     
