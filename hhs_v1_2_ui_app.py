@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import argparse
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -1237,9 +1237,7 @@ def run_streamlit_app() -> None:
         "Vitals + Labs",
         "Lifestyle + History",
         "Treatment + Safety",
-        "Assessment Review",
-        "Model Audit",
-        "Export",
+        "Save Assessment",
     ])
 
     with tabs[0]:
@@ -1412,139 +1410,35 @@ def run_streamlit_app() -> None:
     scorer = HHSManualScorer(fields, int(age), str(sex), str(locals().get("lpa_unit", "mg/dL")))
     result = scorer.calculate()
 
+    from assessment_service import AssessmentService, build_encounter_payload
+
+    payload = build_encounter_payload(
+        patient_id=patient_id,
+        visit_id=visit_id,
+        visit_date=visit_date,
+        age=int(age),
+        biological_sex=sex,
+        region_profile=region,
+        clinical_setting=clinical_setting,
+        reviewed_by=reviewed_by,
+        fields=fields,
+        assessment=result,
+        clinician_note=locals().get("clinician_note", ""),
+        lpa_unit=locals().get("lpa_unit", "mg/dL"),
+    )
+
     with tabs[4]:
-        m1, m2, m3, m4, m5 = st.columns(5)
-        with m1:
-            metric_card("HHS Score", f"{result['hhs']} / 100", result["category"], "danger" if any(f.get("suppress_score") for f in result["red_flags"]) else "")
-        with m2:
-            metric_card("Data Confidence", f"{result['data_confidence']} / 100", result["confidence_label"], "good" if result["data_confidence"] >= 70 else "warn")
-        with m3:
-            metric_card("Score Status", "Provisional" if result["abstained"] else "Available", "Routine interpretation status")
-        with m4:
-            metric_card("Score Interval", f"{result['score_interval']['floor']}–{result['score_interval']['optimistic']}", "Floor to optimistic")
-        with m5:
-            metric_card("Safety Flags", str(len(result["red_flags"])), result["red_flags"][0]["message"] if result["red_flags"] else "No active safety flag", "warn" if result["red_flags"] else "good")
-
-        if result["abstention_reasons"]:
-            st.warning("; ".join(result["abstention_reasons"]))
-
-        left, right = st.columns([1.2, 0.8], gap="large")
-        with left:
-            html('<div class="section-card">')
-            section_header("Domain burden contributors", "Ranked contribution to total modeled burden.")
-            contribution_bars(result["domain_rows"])
-            html("</div>")
-        with right:
-            html('<div class="section-card">')
-            section_header("Clinical review summary", "Concise interpretation for clinician review.")
-            if result["red_flags"]:
-                for flag in result["red_flags"]:
-                    html(f'<div class="review-box warn"><div class="review-title">{flag["flag"].replace("_", " ").title()}</div><div class="review-text">{flag["message"]}</div></div>')
-            else:
-                html('<div class="review-box good"><div class="review-title">No acute suppression</div><div class="review-text">Routine score interpretation is available for the current encounter.</div></div>')
-            if result["recommended_inputs"]:
-                rec = result["recommended_inputs"][0]
-                html(f'<div class="review-box"><div class="review-title">Recommended next input</div><div class="review-text">{rec["Field"]} may improve the {rec["Domain"]} assessment.</div></div>')
-            html(f'<div class="review-box"><div class="review-title">Burden summary</div><div class="review-text">Total burden {result["burden"]["total"]}; main burden {result["burden"]["main"]}; treatment residual {result["burden"]["treatment"]}; interaction {result["burden"]["interaction"]}.</div></div>')
-            html("</div>")
-
-        col_a, col_b = st.columns([0.85, 1.15], gap="large")
-        with col_a:
-            html('<div class="section-card">')
-            section_header("Current input feed", "Structured field state for the active encounter.")
-            render_feed_rows(feeds, limit=45)
-            html("</div>")
-        with col_b:
-            html('<div class="section-card">')
-            section_header("Domain burden table", "Domain-level decomposition.")
-            st.dataframe(pd.DataFrame(result["domain_rows"]), use_container_width=True, hide_index=True)
-            section_header("Treatment residual")
-            if result["treatment_rows"]:
-                st.dataframe(pd.DataFrame(result["treatment_rows"]), use_container_width=True, hide_index=True)
-            else:
-                st.write("No treatment residual contribution in current expected state.")
-            section_header("Recommended additional inputs")
-            st.dataframe(pd.DataFrame(result["recommended_inputs"]), use_container_width=True, hide_index=True)
-            html("</div>")
-
-    with tabs[5]:
-        col_a, col_b = st.columns([0.9, 1.1], gap="large")
-        with col_a:
-            html('<div class="section-card">')
-            section_header("Model identity", "Versioning and configuration for auditability.")
-            rows = [
-                ("Model version", MODEL_VERSION),
-                ("Selected profile", PROFILE_ID),
-                ("Weight profile type", WEIGHT_PROFILE_TYPE),
-                ("Interaction mode", INTERACTION_MODE),
-                ("Main burden cap", "75 points"),
-                ("Treatment residual cap", "10 points"),
-                ("Output type", "0–100 cardiovascular health score"),
-                ("Information deficit D", str(result["information_deficit_D"])),
-                ("Core freshness C_core", str(result["core_freshness_C_core"])),
-            ]
-            for k, v in rows:
-                html(f'<div class="feed-row"><div class="feed-name">{k}</div><div class="pill">{v}</div></div>')
-            html("</div>")
-        with col_b:
-            html('<div class="section-card">')
-            section_header("Weight profile", "Clinician-visible domain weights for the selected profile.")
-            weights = pd.DataFrame([{"Domain": k, "Weight": v} for k, v in DOMAIN_WEIGHTS.items()])
-            st.dataframe(weights, use_container_width=True, hide_index=True)
-            section_header("Formula status")
-            st.markdown(
-                """
-                - Main burden: `sum(W_g * R_g)`
-                - Interaction burden: zero in `v1_zero_default`
-                - Treatment residual: `rho_g * T_g * (1 - R_g)`
-                - Score: `HHS = max(0, 100 - B)`
-                - Confidence: `100 * [0.70(1-D) + 0.30*C_core]`
-                - Age/sex: context variables, not scored burden domains
-                """
-            )
-            section_header("Modifier and treatment weights")
-            modifier_rows = [
-                {"Component": "Behavioral: alcohol", "Weight": BEHAVIORAL_COMPONENT_WEIGHTS["alcohol_audit"]},
-                {"Component": "Behavioral: sleep", "Weight": BEHAVIORAL_COMPONENT_WEIGHTS["sleep_hours"]},
-                {"Component": "Behavioral: stress", "Weight": BEHAVIORAL_COMPONENT_WEIGHTS["stress_score"]},
-                {"Component": "Lipid modifier: triglycerides", "Weight": LIPID_MODIFIER_WEIGHTS["triglycerides"]},
-                {"Component": "Lipid modifier: Lp(a)", "Weight": LIPID_MODIFIER_WEIGHTS["lpa"]},
-                {"Component": "Tobacco modifier: pack-years", "Weight": TOBACCO_MODIFIER_WEIGHTS["pack_years"]},
-                {"Component": "Tobacco modifier: smokeless tobacco", "Weight": TOBACCO_MODIFIER_WEIGHTS["smokeless_tobacco"]},
-                {"Component": "Inherited modifier: PRS", "Weight": INHERITED_MODIFIER_WEIGHTS["prs_percentile"]},
-                {"Component": "Treatment residual: BP", "Weight": TREATMENT_RHO["Blood Pressure"]},
-                {"Component": "Treatment residual: Lipids", "Weight": TREATMENT_RHO["Lipids"]},
-                {"Component": "Treatment residual: Glucose", "Weight": TREATMENT_RHO["Glucose"]},
-                {"Component": "Treatment residual: Kidney", "Weight": TREATMENT_RHO["Kidney"]},
-            ]
-            st.dataframe(pd.DataFrame(modifier_rows), use_container_width=True, hide_index=True)
-            html("</div>")
-
-    with tabs[6]:
         html('<div class="section-card">')
-        section_header("Encounter export", "Structured encounter payload for scoring, audit, or report generation.")
-        payload = {
-            "visit": {
-                "patient_id": patient_id,
-                "visit_id": visit_id,
-                "visit_date": str(visit_date),
-                "age": int(age),
-                "biological_sex": sex,
-                "region_profile": region,
-                "clinical_setting": clinical_setting,
-                "reviewed_by": reviewed_by,
-            },
-            "input_feeds": [asdict(rec) for rec in fields.values()],
-            "assessment": result,
-            "clinician_note": locals().get("clinician_note", ""),
-            "lpa_unit": locals().get("lpa_unit", "mg/dL"),
-        }
-        st.json(payload)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.download_button("Download encounter JSON", data=json.dumps(payload, indent=2, default=str), file_name="hhs_encounter_payload.json", mime="application/json")
-        with c2:
-            st.button("Finalize encounter", type="primary")
+        section_header("Save assessment", "Save this encounter directly to MongoDB Atlas for dashboard review.")
+        if st.button("Save Assessment", type="primary", use_container_width=True):
+            try:
+                saved = AssessmentService().save_assessment(payload)
+                st.success("Assessment saved successfully.")
+                st.write(f"Patient ID: {saved['patient_id']}")
+                st.write(f"Visit ID: {saved['visit_id']}")
+                st.write(f"Timestamp: {saved['timestamp'].isoformat()}")
+            except Exception as exc:
+                st.error(f"Assessment could not be saved: {exc}")
         html("</div>")
 
 

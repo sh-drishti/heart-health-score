@@ -1,6 +1,6 @@
 from mapping import HHS_FIELD_METADATA
 import pandas as pd
-import json
+
 # Reverse mapping: Official Label -> HHS Key
 LABEL_TO_KEY = {
     meta["label"]: key
@@ -43,11 +43,3 @@ def payload_to_patient(payload):
         "visit": payload["visit"],
         "clinician_note": payload.get("clinician_note","")
     }
-
-with open("data/hhs_encounter_payload.json", "r") as f:
-    payload = json.load(f)
-patient=payload_to_patient(payload)
-for k, v in patient.items():
-    if v is None:
-        print(k, "is None")
-    # print(f"{k}: {v}")
