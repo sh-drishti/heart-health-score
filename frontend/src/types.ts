@@ -80,6 +80,15 @@ export interface ValidationPayload {
   reason: string
 }
 
+// A doctor's review note, stored per patient. Distinct from the intake
+// clinician_note, which belongs to a single encounter.
+export interface SavedNote {
+  patient_id: string
+  note: string
+  author: string
+  updated_at: string
+}
+
 // --- Intake form ------------------------------------------------------------
 
 export type Availability = 'Available' | 'Unknown' | 'Not measured'
