@@ -23,6 +23,7 @@ heart-health-score/
 │   ├── payload_convert.py        ← payload → patient dict
 │   ├── intake_schema.py          ← the 48 intake fields (single source of truth)
 │   ├── intake.py                 ← intake write path: score + save
+│   ├── notes.py                  ← clinical review notes (MongoDB)
 │   └── requirements.txt          ← fastapi, uvicorn
 └── frontend/                     ← NEW Vite + React + TS app
     ├── src/pages/                ← LandingPage (/), DashboardPage, IntakePage
@@ -109,11 +110,23 @@ Switch in the dashboard header dropdown:
 | `GET /api/patients?source=csv\|payload` | List patient IDs |
 | `GET /api/patients/{id}?source=csv\|payload` | Full dashboard bundle: `{patient, patient_data, assessment}` |
 | `POST /api/validation` | Save doctor validation `{patient_id, agreement, calculated_hhs, doctor_hhs, reason}` (in-memory) |
+| `GET /api/patients/{id}/note` | Saved clinical review note; `note` is `null` when none exists |
+| `PUT /api/patients/{id}/note` | Save (upsert) the review note `{note, author}` → MongoDB |
 | `GET /api/intake/schema` | Intake form definitions: 48 fields with bounds, defaults, units, labels |
 | `POST /api/intake/score` | Score a submission without saving — drives the live preview |
 | `POST /api/intake/encounters` | Score + persist an encounter to MongoDB. `409` if `visit_id` already exists |
 
 Interactive docs: http://localhost:8000/docs (FastAPI Swagger UI)
+
+## Clinical Notes
+
+The notes panel on `/dashboard` persists to MongoDB (`clinical_notes`
+collection, one current note per patient) rather than to `localStorage`. A
+failed save is reported in the panel instead of silently succeeding locally.
+
+Distinct from the intake `clinician_note`, which belongs to a single encounter
+payload. When a patient has no saved review note, the panel falls back to the
+intake note as a starting point.
 
 ## Data Entry (`/entry`)
 

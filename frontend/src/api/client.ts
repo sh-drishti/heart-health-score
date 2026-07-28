@@ -4,6 +4,7 @@ import type {
   DashboardBundle,
   DuplicateVisitError,
   IntakeSchema,
+  SavedNote,
   SaveResult,
   Source,
   Submission,
@@ -36,6 +37,30 @@ export async function postValidation(
   })
   if (!res.ok) throw new Error(`validation: ${res.status} ${await res.text()}`)
   return res.json()
+}
+
+// --- Clinical review notes --------------------------------------------------
+
+export async function fetchNote(patientId: string): Promise<SavedNote | null> {
+  const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/note`)
+  if (!res.ok) throw new Error(`note: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  return (data.note ?? null) as SavedNote | null
+}
+
+export async function saveNote(
+  patientId: string,
+  note: string,
+  author = '',
+): Promise<SavedNote> {
+  const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/note`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ note, author }),
+  })
+  if (!res.ok) throw new Error(`note: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  return data.note as SavedNote
 }
 
 // --- Intake -----------------------------------------------------------------
