@@ -86,7 +86,9 @@ VISIT_FIELDS: List[Dict[str, Any]] = [
     {"widget": "text", "key": "patient_id", "label": "Patient ID / MRN", "default": "HHS-DEMO-0001"},
     {"widget": "text", "key": "visit_id", "label": "Visit ID", "default": "VISIT-2026-001"},
     {"widget": "date", "key": "visit_date", "label": "Visit date", "default": None},
-    {"widget": "number_plain", "key": "age", "label": "Age", "min": 18, "max": 110, "default": 54, "step": 1},
+    # Paediatric encounters are entered too, so age starts at 1. The engine only
+    # reads age in _prior_treatment (an age >= 50 branch), so any value scores.
+    {"widget": "number_plain", "key": "age", "label": "Age", "min": 1, "max": 120, "default": 54, "step": 1},
     {
         "widget": "select_plain",
         "key": "biological_sex",
