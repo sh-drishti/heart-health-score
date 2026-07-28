@@ -234,9 +234,9 @@ function RedFlags({ assessment }: { assessment: Assessment }) {
             <AlertDescription>No critical red flags detected.</AlertDescription>
           </Alert>
         ) : (
-          flags.map((flag, i) => (
-            <Alert key={i} variant="destructive">
-              <AlertDescription>{flag}</AlertDescription>
+          flags.map((flag) => (
+            <Alert key={flag.flag} variant="destructive">
+              <AlertDescription>{flag.message}</AlertDescription>
             </Alert>
           ))
         )}

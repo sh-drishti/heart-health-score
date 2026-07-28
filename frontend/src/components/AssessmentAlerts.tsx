@@ -22,8 +22,8 @@ export function AssessmentAlerts({ assessment }: { assessment: Assessment }) {
             Critical Red Flags ({assessment.red_flags.length})
           </div>
           <ul className="space-y-1 text-sm text-rose-700/90 dark:text-rose-300/90 list-disc pl-6">
-            {assessment.red_flags.map((flag, i) => (
-              <li key={i}>{flag}</li>
+            {assessment.red_flags.map((flag) => (
+              <li key={flag.flag}>{flag.message}</li>
             ))}
           </ul>
         </div>

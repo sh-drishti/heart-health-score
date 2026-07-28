@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Assessment } from '@/types'
+import type { SeverityLevel } from '@/config/domains'
 import { postValidation } from '@/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,15 @@ interface Props {
   patientId: string
   assessment: Assessment
 }
+
+// Mirrors hhs_v1_2_ui_app.score_category thresholds exactly.
+const SCORE_BANDS: { label: string; range: string; level: SeverityLevel }[] = [
+  { label: 'Favorable', range: '80–100', level: 'ok' },
+  { label: 'Mildly elevated', range: '65–79', level: 'warn' },
+  { label: 'Moderate burden', range: '50–64', level: 'warn' },
+  { label: 'High burden', range: '30–49', level: 'risk' },
+  { label: 'Very high burden', range: '0–29', level: 'risk' },
+]
 
 export function ClinicalValidation({ patientId, assessment }: Props) {
   const [agreement, setAgreement] = useState<'Yes' | 'No'>('Yes')
@@ -147,30 +157,16 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                <TableRow>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <SeverityDot level="ok" /> Healthy
-                    </span>
-                  </TableCell>
-                  <TableCell className="tabular-nums">80–100</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <SeverityDot level="warn" /> Borderline
-                    </span>
-                  </TableCell>
-                  <TableCell className="tabular-nums">60–79</TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell>
-                    <span className="inline-flex items-center gap-2">
-                      <SeverityDot level="risk" /> High Risk
-                    </span>
-                  </TableCell>
-                  <TableCell className="tabular-nums">&lt;60</TableCell>
-                </TableRow>
+                {SCORE_BANDS.map((band) => (
+                  <TableRow key={band.label}>
+                    <TableCell>
+                      <span className="inline-flex items-center gap-2">
+                        <SeverityDot level={band.level} /> {band.label}
+                      </span>
+                    </TableCell>
+                    <TableCell className="tabular-nums">{band.range}</TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           </CardContent>

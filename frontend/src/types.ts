@@ -33,6 +33,21 @@ export interface Burden {
   interaction: number
 }
 
+// The engine returns red flags as objects, not strings.
+export interface RedFlag {
+  flag: string
+  message: string
+  suppress_score: boolean
+}
+
+export interface ScoreInterval {
+  floor: number
+  expected: number
+  optimistic: number
+  optimistic_to_expected_width_W: number
+  full_width: number
+}
+
 export interface Assessment {
   hhs: number
   data_confidence: number
@@ -43,8 +58,8 @@ export interface Assessment {
   domain_severities: Record<string, number>
   domain_rows: DomainRow[]
   burden: Burden
-  red_flags: string[]
-  score_interval: [number, number] | number[]
+  red_flags: RedFlag[]
+  score_interval: ScoreInterval
   notes: string[] | string
   metadata?: Record<string, unknown>
 }
@@ -63,4 +78,101 @@ export interface ValidationPayload {
   calculated_hhs: number
   doctor_hhs: number
   reason: string
+}
+
+// --- Intake form ------------------------------------------------------------
+
+export type Availability = 'Available' | 'Unknown' | 'Not measured'
+
+export type FieldWidget =
+  | 'number'
+  | 'slider'
+  | 'select'
+  | 'yes_no'
+  | 'lpa_unit'
+  | 'text'
+  | 'date'
+  | 'number_plain'
+  | 'select_plain'
+
+export interface FieldDef {
+  widget: FieldWidget
+  key: string
+  label: string
+  domain?: string
+  unit?: string
+  min?: number
+  max?: number
+  default?: number | string | null
+  step?: number
+  options?: string[]
+  default_status?: Availability
+  months_default?: number
+  months_max?: number
+}
+
+export interface FieldGroup {
+  title: string
+  note: string | null
+  fields: FieldDef[]
+}
+
+export interface FormSection {
+  section: string
+  groups: FieldGroup[]
+}
+
+export interface FormTab {
+  id: string
+  title: string
+  columns: FormSection[][]
+}
+
+export interface IntakeSchema {
+  visit_fields: FieldDef[]
+  visit_note: string
+  tabs: FormTab[]
+  availability_options: Availability[]
+  yes_no_options: string[]
+  clinician_note_default: string
+}
+
+// One field's answer. `status` applies to number/slider widgets only.
+export interface FieldEntry {
+  status?: Availability
+  value?: number | string | null
+  months_old?: number | null
+}
+
+export interface VisitInfo {
+  patient_id: string
+  visit_id: string
+  visit_date: string
+  age: number
+  biological_sex: string
+  region_profile: string
+  clinical_setting: string
+  reviewed_by: string
+}
+
+export interface Submission {
+  visit: VisitInfo
+  fields: Record<string, FieldEntry>
+  clinician_note: string
+  lpa_unit: string
+  allow_duplicate_visit?: boolean
+}
+
+export interface SaveResult {
+  status: string
+  patient_id: string
+  visit_id: string
+  encounter_id: string
+  timestamp: string
+  assessment: Assessment
+}
+
+export interface DuplicateVisitError {
+  message: string
+  existing: { visit_id: string; encounter_timestamp: string }
 }
