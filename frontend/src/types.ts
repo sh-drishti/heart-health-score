@@ -89,6 +89,38 @@ export interface SavedNote {
   updated_at: string
 }
 
+// --- Monitoring / trends ----------------------------------------------------
+
+export interface HhsTrendPoint {
+  date: string
+  visit_id: string
+  hhs: number
+  confidence: number
+}
+
+export interface DomainTrendPoint {
+  date: string
+  burden: number
+}
+
+export interface TrendInsights {
+  attention_required: string[]
+  positive_progress: string[]
+}
+
+export interface MonitoringData {
+  visit_count: number
+  history: {
+    hhs_trend: HhsTrendPoint[]
+    domain_trends: Record<string, DomainTrendPoint[]>
+  }
+  current: {
+    burden_breakdown: Burden
+    red_flags: RedFlag[]
+  }
+  insights: TrendInsights
+}
+
 // --- Intake form ------------------------------------------------------------
 
 export type Availability = 'Available' | 'Unknown' | 'Not measured'

@@ -4,6 +4,7 @@ import type {
   DashboardBundle,
   DuplicateVisitError,
   IntakeSchema,
+  MonitoringData,
   SavedNote,
   SaveResult,
   Source,
@@ -61,6 +62,16 @@ export async function saveNote(
   if (!res.ok) throw new Error(`note: ${res.status} ${await res.text()}`)
   const data = await res.json()
   return data.note as SavedNote
+}
+
+// --- Monitoring / trends ----------------------------------------------------
+
+// Resolves to null for patients with no saved encounters (all CSV patients).
+export async function fetchMonitoring(patientId: string): Promise<MonitoringData | null> {
+  const res = await fetch(`/api/patients/${encodeURIComponent(patientId)}/monitoring`)
+  if (!res.ok) throw new Error(`monitoring: ${res.status} ${await res.text()}`)
+  const data = await res.json()
+  return (data.monitoring ?? null) as MonitoringData | null
 }
 
 // --- Intake -----------------------------------------------------------------

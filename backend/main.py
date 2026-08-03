@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from backend import intake, intake_schema, notes, service
+from backend import intake, intake_schema, monitoring, notes, service
 
 app = FastAPI(title="HHS Dashboard API", version="1.0.0")
 
@@ -156,6 +156,26 @@ def write_note(patient_id: str, body: NoteIn):
         raise HTTPException(status_code=502, detail=str(exc))
 
     return {"status": "ok", "note": saved}
+
+
+# --- Monitoring / trends ----------------------------------------------------
+
+
+@app.get("/api/patients/{patient_id}/monitoring")
+def read_monitoring(patient_id: str):
+    """
+    Trend history across a patient's encounters.
+
+    `monitoring` is null for patients with no saved encounters, which includes
+    every CSV-sourced patient.
+    """
+
+    try:
+        data = monitoring.get_monitoring(patient_id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "monitoring": data}
 
 
 # --- Intake (data entry) ----------------------------------------------------
