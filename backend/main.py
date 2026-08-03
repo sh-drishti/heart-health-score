@@ -17,7 +17,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from backend import intake, intake_schema, service
+from backend import intake, intake_schema, notes, service
 
 app = FastAPI(title="HHS Dashboard API", version="1.0.0")
 
@@ -45,11 +45,16 @@ class ValidationIn(BaseModel):
     reason: str = ""
 
 
+class NoteIn(BaseModel):
+    note: str
+    author: str = ""
+
+
 class VisitIn(BaseModel):
     patient_id: str
     visit_id: str
     visit_date: str
-    age: int = Field(ge=18, le=110)
+    age: int = Field(ge=1, le=120)
     biological_sex: str
     region_profile: str = ""
     clinical_setting: str = ""
@@ -126,6 +131,31 @@ def patient_dashboard(patient_id: str, source: str = Source):
 def create_validation(validation: ValidationIn):
     saved = service.save_validation(validation.model_dump())
     return {"status": "ok", "validation": saved}
+
+
+# --- Clinical review notes --------------------------------------------------
+
+
+@app.get("/api/patients/{patient_id}/note")
+def read_note(patient_id: str):
+    """Saved review note for a patient. `note` is null when none exists."""
+    try:
+        saved = notes.get_note(patient_id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "note": saved}
+
+
+@app.put("/api/patients/{patient_id}/note")
+def write_note(patient_id: str, body: NoteIn):
+    """Save (upsert) the review note for a patient."""
+    try:
+        saved = notes.save_note(patient_id, body.note, body.author)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"status": "ok", "note": saved}
 
 
 # --- Intake (data entry) ----------------------------------------------------
