@@ -155,8 +155,32 @@ export interface VisitInfo {
   reviewed_by: string
 }
 
+export interface PatientContact {
+  email: string
+  phone: string
+}
+
+export interface NotificationPreferences {
+  email: boolean
+  push: boolean
+}
+
+export interface EmergencyContact {
+  name: string
+  relation: string
+  contact: PatientContact
+}
+
+export interface PatientProfile {
+  name: string
+  contact: PatientContact
+  notification_preferences: NotificationPreferences
+  emergency_contact: EmergencyContact
+}
+
 export interface Submission {
   visit: VisitInfo
+  patient_profile: PatientProfile
   fields: Record<string, FieldEntry>
   clinician_note: string
   lpa_unit: string

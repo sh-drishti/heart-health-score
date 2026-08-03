@@ -1265,6 +1265,30 @@ def run_streamlit_app() -> None:
             with c8:
                 reviewed_by = st.text_input("Reviewed by", value="Clinician / Research user")
             st.caption("Age and sex are used as context variables for priors/audit, not as scored burden domains in HHS-v1.2.")
+            section_header("Patient details", "Stored on the patient profile for monitoring and notifications.")
+            p1, p2, p3 = st.columns(3)
+            with p1:
+                patient_name = st.text_input("Full Name", value="")
+            with p2:
+                patient_email = st.text_input("Email Address", value="")
+            with p3:
+                patient_phone = st.text_input("Phone Number", value="")
+            section_header("Emergency contact")
+            e1, e2, e3, e4 = st.columns(4)
+            with e1:
+                emergency_name = st.text_input("Emergency Contact Name", value="")
+            with e2:
+                emergency_relation = st.text_input("Relationship", value="")
+            with e3:
+                emergency_phone = st.text_input("Emergency Phone Number", value="")
+            with e4:
+                emergency_email = st.text_input("Emergency Email Address", value="")
+            section_header("Notification preferences")
+            n1, n2 = st.columns(2)
+            with n1:
+                notify_email = st.selectbox("Receive Email Notifications", ["Yes", "No"], index=0)
+            with n2:
+                notify_push = st.selectbox("Receive Push Notifications", ["Yes", "No"], index=0)
             html("</div>")
         with right:
             html('<div class="section-card">')
@@ -1426,13 +1450,32 @@ def run_streamlit_app() -> None:
         clinician_note=locals().get("clinician_note", ""),
         lpa_unit=locals().get("lpa_unit", "mg/dL"),
     )
+    patient_profile = {
+        "name": locals().get("patient_name", ""),
+        "contact": {
+            "email": locals().get("patient_email", ""),
+            "phone": locals().get("patient_phone", ""),
+        },
+        "notification_preferences": {
+            "email": locals().get("notify_email", "Yes") == "Yes",
+            "push": locals().get("notify_push", "Yes") == "Yes",
+        },
+        "emergency_contact": {
+            "name": locals().get("emergency_name", ""),
+            "relation": locals().get("emergency_relation", ""),
+            "contact": {
+                "email": locals().get("emergency_email", ""),
+                "phone": locals().get("emergency_phone", ""),
+            },
+        },
+    }
 
     with tabs[4]:
         html('<div class="section-card">')
         section_header("Save assessment", "Save this encounter directly to MongoDB Atlas for dashboard review.")
         if st.button("Save Assessment", type="primary", use_container_width=True):
             try:
-                saved = AssessmentService().save_assessment(payload)
+                saved = AssessmentService().save_assessment(payload, patient_profile=patient_profile)
                 st.success("Assessment saved successfully.")
                 st.write(f"Patient ID: {saved['patient_id']}")
                 st.write(f"Visit ID: {saved['visit_id']}")

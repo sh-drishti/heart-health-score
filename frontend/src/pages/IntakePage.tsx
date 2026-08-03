@@ -11,6 +11,7 @@ import type {
   FieldDef,
   FieldEntry,
   IntakeSchema,
+  PatientProfile,
   SaveResult,
   Submission,
   VisitInfo,
@@ -53,11 +54,34 @@ function initialVisit(fields: FieldDef[]): VisitInfo {
   }
 }
 
+function initialPatientProfile(): PatientProfile {
+  return {
+    name: '',
+    contact: {
+      email: '',
+      phone: '',
+    },
+    notification_preferences: {
+      email: true,
+      push: true,
+    },
+    emergency_contact: {
+      name: '',
+      relation: '',
+      contact: {
+        email: '',
+        phone: '',
+      },
+    },
+  }
+}
+
 export function IntakePage() {
   const [schema, setSchema] = useState<IntakeSchema | null>(null)
   const [schemaErr, setSchemaErr] = useState<string | null>(null)
 
   const [visit, setVisit] = useState<VisitInfo | null>(null)
+  const [patientProfile, setPatientProfile] = useState<PatientProfile>(initialPatientProfile)
   const [entries, setEntries] = useState<Record<string, FieldEntry>>({})
   const [lpaUnit, setLpaUnit] = useState('mg/dL')
   const [note, setNote] = useState('')
@@ -84,8 +108,14 @@ export function IntakePage() {
 
   const submission: Submission | null = useMemo(() => {
     if (!visit) return null
-    return { visit, fields: entries, clinician_note: note, lpa_unit: lpaUnit }
-  }, [visit, entries, note, lpaUnit])
+    return {
+      visit,
+      patient_profile: patientProfile,
+      fields: entries,
+      clinician_note: note,
+      lpa_unit: lpaUnit,
+    }
+  }, [visit, patientProfile, entries, note, lpaUnit])
 
   // Debounced live scoring. The engine is cheap and deterministic, so
   // re-scoring on edit is the same work the Streamlit rerun did.
@@ -120,6 +150,12 @@ export function IntakePage() {
 
   const patchVisit = useCallback((patch: Partial<VisitInfo>) => {
     setVisit((prev) => (prev ? { ...prev, ...patch } : prev))
+    setSaved(null)
+    setDuplicate(null)
+  }, [])
+
+  const patchPatientProfile = useCallback((patch: Partial<PatientProfile>) => {
+    setPatientProfile((prev) => ({ ...prev, ...patch }))
     setSaved(null)
     setDuplicate(null)
   }, [])
@@ -261,6 +297,182 @@ export function IntakePage() {
                     onChange={(e) => patchVisit({ reviewed_by: e.target.value })}
                     className="h-8"
                   />
+                </div>
+              </div>
+
+              <div className="mt-5 border-t pt-5">
+                <h3 className="text-sm font-semibold mb-1">Patient details</h3>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Stored on the patient profile for monitoring and notifications.
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label className="text-xs mb-1 block">Full Name</Label>
+                    <Input
+                      value={patientProfile.name}
+                      onChange={(e) => patchPatientProfile({ name: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Email Address</Label>
+                    <Input
+                      type="email"
+                      value={patientProfile.contact.email}
+                      onChange={(e) =>
+                        patchPatientProfile({
+                          contact: {
+                            ...patientProfile.contact,
+                            email: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Phone Number</Label>
+                    <Input
+                      value={patientProfile.contact.phone}
+                      onChange={(e) =>
+                        patchPatientProfile({
+                          contact: {
+                            ...patientProfile.contact,
+                            phone: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 border-t pt-5">
+                <h3 className="text-sm font-semibold mb-1">Emergency contact</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+                  <div>
+                    <Label className="text-xs mb-1 block">Name</Label>
+                    <Input
+                      value={patientProfile.emergency_contact.name}
+                      onChange={(e) =>
+                        patchPatientProfile({
+                          emergency_contact: {
+                            ...patientProfile.emergency_contact,
+                            name: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Relationship</Label>
+                    <Input
+                      value={patientProfile.emergency_contact.relation}
+                      onChange={(e) =>
+                        patchPatientProfile({
+                          emergency_contact: {
+                            ...patientProfile.emergency_contact,
+                            relation: e.target.value,
+                          },
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Phone Number</Label>
+                    <Input
+                      value={patientProfile.emergency_contact.contact.phone}
+                      onChange={(e) =>
+                        patchPatientProfile({
+                          emergency_contact: {
+                            ...patientProfile.emergency_contact,
+                            contact: {
+                              ...patientProfile.emergency_contact.contact,
+                              phone: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">Email Address</Label>
+                    <Input
+                      type="email"
+                      value={patientProfile.emergency_contact.contact.email}
+                      onChange={(e) =>
+                        patchPatientProfile({
+                          emergency_contact: {
+                            ...patientProfile.emergency_contact,
+                            contact: {
+                              ...patientProfile.emergency_contact.contact,
+                              email: e.target.value,
+                            },
+                          },
+                        })
+                      }
+                      className="h-8"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-5 border-t pt-5">
+                <h3 className="text-sm font-semibold mb-1">Notification preferences</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <Label className="text-xs mb-1 block">
+                      Receive Email Notifications
+                    </Label>
+                    <Select
+                      value={patientProfile.notification_preferences.email ? 'Yes' : 'No'}
+                      onValueChange={(v) =>
+                        patchPatientProfile({
+                          notification_preferences: {
+                            ...patientProfile.notification_preferences,
+                            email: v === 'Yes',
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8! text-xs w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Yes">Yes</SelectItem>
+                        <SelectItem value="No">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-xs mb-1 block">
+                      Receive Push Notifications
+                    </Label>
+                    <Select
+                      value={patientProfile.notification_preferences.push ? 'Yes' : 'No'}
+                      onValueChange={(v) =>
+                        patchPatientProfile({
+                          notification_preferences: {
+                            ...patientProfile.notification_preferences,
+                            push: v === 'Yes',
+                          },
+                        })
+                      }
+                    >
+                      <SelectTrigger className="h-8! text-xs w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Yes">Yes</SelectItem>
+                        <SelectItem value="No">No</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 

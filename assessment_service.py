@@ -44,9 +44,13 @@ class AssessmentService:
             repository = EncounterRepository()
         self.repository = repository
 
-    def save_assessment(self, payload: Dict[str, Any]) -> Dict[str, Any]:
+    def save_assessment(self, payload: Dict[str, Any], patient_profile: Dict[str, Any] | None = None) -> Dict[str, Any]:
         saved_at = datetime.now(timezone.utc)
-        encounter_id = self.repository.save_payload(payload, encounter_timestamp=saved_at)
+        encounter_id = self.repository.save_payload(
+            payload,
+            encounter_timestamp=saved_at,
+            patient_profile=patient_profile,
+        )
         return {
             "patient_id": payload["visit"]["patient_id"],
             "visit_id": payload["visit"]["visit_id"],

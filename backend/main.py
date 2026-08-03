@@ -56,10 +56,34 @@ class VisitIn(BaseModel):
     reviewed_by: str = ""
 
 
+class ContactIn(BaseModel):
+    email: str = ""
+    phone: str = ""
+
+
+class NotificationPreferencesIn(BaseModel):
+    email: bool = True
+    push: bool = True
+
+
+class EmergencyContactIn(BaseModel):
+    name: str = ""
+    relation: str = ""
+    contact: ContactIn = Field(default_factory=ContactIn)
+
+
+class PatientProfileIn(BaseModel):
+    name: str = ""
+    contact: ContactIn = Field(default_factory=ContactIn)
+    notification_preferences: NotificationPreferencesIn = Field(default_factory=NotificationPreferencesIn)
+    emergency_contact: EmergencyContactIn = Field(default_factory=EmergencyContactIn)
+
+
 class SubmissionIn(BaseModel):
     """One intake form submission. `fields` is {key: {status, value, months_old}}."""
 
     visit: VisitIn
+    patient_profile: PatientProfileIn = Field(default_factory=PatientProfileIn)
     fields: Dict[str, Dict[str, Any]] = {}
     clinician_note: str = ""
     lpa_unit: str = "mg/dL"

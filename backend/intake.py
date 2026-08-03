@@ -153,7 +153,7 @@ def save(submission: Dict[str, Any], allow_duplicate_visit: bool = False) -> Dic
         if existing is not None:
             return {"status": "duplicate_visit", "existing": existing}
 
-    saved = service.save_assessment(payload)
+    saved = service.save_assessment(payload, patient_profile=submission.get("patient_profile"))
 
     return {
         "status": "saved",
