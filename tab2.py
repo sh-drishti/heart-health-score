@@ -9,20 +9,31 @@ for domain,info in DOMAINS.items():
     for feature in info["features"]:
         FEATURE_TO_DOMAIN[feature]=domain
 
-def show_tab2(patient_data, official_result):
+def show_tab2(patient_data, official_result, patient_history):
     show_parameter_summary(patient_data)
     st.divider()
     
-    show_domain_contribution_chart(official_result)
+    show_hhs_trend(patient_history)
     st.divider()
+
+    show_domain_trends(patient_history)
+    st.divider()
+
+    show_trend_insights(patient_history)
+    st.divider()
+
+    c1,c2=st.columns(2)    
+    # show_domain_contribution_chart(official_result)
+    # st.divider()
     
-    show_domain_severity_chart(official_result)
-    st.divider()
+    # show_domain_severity_chart(official_result)
+    # st.divider()
 
-    show_burden_breakdown(official_result)
-    st.divider()
+    with c1:
+        show_burden_breakdown(official_result)
 
-    show_red_flags(official_result)
+    with c2:
+        show_red_flags(official_result)
     
 def show_parameter_summary(patient_data):
     st.subheader("Complete Parameter Summary")
@@ -44,95 +55,105 @@ def show_parameter_summary(patient_data):
     df=df.drop(columns=["Sort","Severity Score"])
     st.dataframe(df,use_container_width=True, hide_index=True)
     
-def show_domain_contribution_chart(official_result):
-    st.subheader("Domain Contribution to HHS")
-    df=pd.DataFrame(official_result["domain_rows"])
-    df=df[df["Total domain contribution"]>0]
-    fig=px.pie(
-        df,
-        names="Domain",
-        values="Total domain contribution",
-        hole=0.45
-    )
-    total_burden=official_result["burden"]["total"]
-    fig.update_traces(
-        textposition="outside",
-        textinfo="percent+label",
-        hovertemplate=
-        "<b>%{label}</b><br>" +
-        "Contribution: %{value:.2f}<br>" +
-        "Percentage: %{percent}<extra></extra>"
-    )
 
-    fig.update_layout(
-        annotations=[
-            dict(
-                text=f"<b>Total<br>{total_burden:.2f}</b>",
-                x=0.5,
-                y=0.5,
-                font_size=18,
-                showarrow=False
-            )
-        ],
-        height=500,
-        margin=dict(
-            t=20,
-            b=20,
-            l=20,
-            r=20
-        ),
-        legend_title="Domains"
-    )
-    st.plotly_chart(fig, use_container_width=True)
+def show_domain_trends():
+    pass
 
-def show_domain_severity_chart(official_result):
-    st.subheader("Domain Severity Overview")
-    df=pd.DataFrame({
-        "Domain":list(official_result["domain_severities"].keys()),
-        "Severity":list(official_result["domain_severities"].values())
-    })
-    def severity_color(value):
-        if value < 0.33:
-            return "Low"
-        elif value < 0.67:
-            return "Moderate"
-        return "High"
-    df["Status"]=df["Severity"].apply(severity_color)
-    df=df.sort_values("Severity", ascending=True)
-    colormap={ "Low": "#4CAF50","Moderate": "#FFC107","High": "#F44336"}
-    fig = px.bar(
-        df,
-        x="Severity",
-        y="Domain",
-        orientation="h",
-        text="Severity",
-        color="Status",
-        color_discrete_map=colormap
-    )
+def show_trend_insights():
+    pass    
+    
+# def show_domain_contribution_chart(official_result):
+#     st.subheader("Domain Contribution to HHS")
+#     df=pd.DataFrame(official_result["domain_rows"])
+#     df=df[df["Total domain contribution"]>0]
+#     fig=px.pie(
+#         df,
+#         names="Domain",
+#         values="Total domain contribution",
+#         hole=0.45
+#     )
+#     total_burden=official_result["burden"]["total"]
+#     fig.update_traces(
+#         textposition="outside",
+#         textinfo="percent+label",
+#         hovertemplate=
+#         "<b>%{label}</b><br>" +
+#         "Contribution: %{value:.2f}<br>" +
+#         "Percentage: %{percent}<extra></extra>"
+#     )
 
-    fig.update_traces(
-        texttemplate="%{text:.2f}",
-        textposition="outside"
-    )
-    fig.update_layout(
-        height=450,
-        showlegend=False,
-        xaxis=dict(
-            title="Severity",
-            range=[0, 1]
-        ),
-        yaxis_title="",
-        margin=dict(
-            t=20,
-            b=20,
-            l=20,
-            r=20
-        )
-    )
-    st.plotly_chart(
-        fig,
-        use_container_width=True
-    )
+#     fig.update_layout(
+#         annotations=[
+#             dict(
+#                 text=f"<b>Total<br>{total_burden:.2f}</b>",
+#                 x=0.5,
+#                 y=0.5,
+#                 font_size=18,
+#                 showarrow=False
+#             )
+#         ],
+#         height=500,
+#         margin=dict(
+#             t=20,
+#             b=20,
+#             l=20,
+#             r=20
+#         ),
+#         legend_title="Domains"
+#     )
+#     st.plotly_chart(fig, use_container_width=True)
+
+# def show_domain_severity_chart(official_result):
+#     st.subheader("Domain Severity Overview")
+#     df=pd.DataFrame({
+#         "Domain":list(official_result["domain_severities"].keys()),
+#         "Severity":list(official_result["domain_severities"].values())
+#     })
+#     def severity_color(value):
+#         if value < 0.33:
+#             return "Low"
+#         elif value < 0.67:
+#             return "Moderate"
+#         return "High"
+#     df["Status"]=df["Severity"].apply(severity_color)
+#     df=df.sort_values("Severity", ascending=True)
+#     colormap={ "Low": "#4CAF50","Moderate": "#FFC107","High": "#F44336"}
+#     fig = px.bar(
+#         df,
+#         x="Severity",
+#         y="Domain",
+#         orientation="h",
+#         text="Severity",
+#         color="Status",
+#         color_discrete_map=colormap
+#     )
+
+#     fig.update_traces(
+#         texttemplate="%{text:.2f}",
+#         textposition="outside"
+#     )
+#     fig.update_layout(
+#         height=450,
+#         showlegend=False,
+#         xaxis=dict(
+#             title="Severity",
+#             range=[0, 1]
+#         ),
+#         yaxis_title="",
+#         margin=dict(
+#             t=20,
+#             b=20,
+#             l=20,
+#             r=20
+#         )
+#     )
+#     st.plotly_chart(
+#         fig,
+#         use_container_width=True
+#     )
+
+
+
 
 def show_burden_breakdown(official_result):
     st.subheader("Burden Breakdown")

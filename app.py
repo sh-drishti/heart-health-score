@@ -42,6 +42,7 @@ if DATA_SOURCE=="csv":
 else:
     repo=EncounterRepository()
     patient_ids=repo.get_all_patients()
+    
 with st.form("patient_search"):
 
     col1, col2 = st.columns([8,1])
@@ -77,6 +78,7 @@ else:
     patients=repo.get_all_patients()
     selected_patient=patient_navigation(patient_ids)
     payload=repo.get_payload(selected_patient)
+    history=repo.get_patient_history(selected_patient)
     # st.write(payload)
     dashboard_data = payload_to_patient(payload)
     patient = dashboard_data["patient"]
@@ -133,4 +135,4 @@ with tab1:
     show_clinical_validation(official_result)
 
 with tab2:
-    show_tab2(patient_data,official_result)
+    show_tab2(patient_data,official_result,history)
