@@ -129,11 +129,13 @@ class EncounterRepository:
         if not history:
             return None
         hhs_trend=[]
-        domain_trends=[]
-        
+        # Keyed by domain name, so this has to be a dict.
+        domain_trends={}
+
         for encounter in history:
             hhs_trend.append({
                 "date":encounter["date"],
+                "visit_id":encounter["visit_id"],
                 "hhs":encounter["hhs"],
                 "confidence":encounter["confidence"]
             })
@@ -150,6 +152,7 @@ class EncounterRepository:
         latest = history[-1]
 
         return {
+            "visit_count": len(history),
             "history": {
                 "hhs_trend": hhs_trend,
                 "domain_trends": domain_trends
