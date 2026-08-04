@@ -10,6 +10,7 @@ db=client[os.getenv("DATABASE_NAME")]
 
 patients_collection=db["patients"]
 encounters_collection=db["encounters"]
+notifications_collection=db["notifications"]
 
 class EncounterRepository:
     def __init__(self):
@@ -214,85 +215,8 @@ class EncounterRepository:
             "positive_progress": positive_progress
         }
         
-    def generate_notifications(self,history):
-        notifications = []
-        if len(history) ==0:
-            return notifications
-        
-        latest=history[-1]
-        notifications.append({
-            "type":"assessment_complete",
-            "priority":"low",
-            "title": "Assessment Complete",
-            "message":
-                "Your Heart Health Score assessment has been completed successfully. "
-                "You can now review your latest results.",
-            "timestamp": datetime.now(timezone.utc)
-        })
-        if len(latest["red_flags"])>0:
-            notifications.append({
-                "type": "critical",
-                "priority": "high",
-                "title": "Medical Attention Recommended",
-                "message":
-                    "Your latest assessment identified findings that may require "
-                    "prompt medical review. Please consult your healthcare provider.",
-                "timestamp": datetime.now(timezone.utc)
-            })
-        
-        elif len(history)>=2:
-            previous=history[-2]
-            hhs_change=previous["hhs"]-latest["hhs"]
-            if hhs_change>=10:
-                notifications.append({
-                    "type": "critical",
-                    "priority": "high",
-                    "title": "Heart Health Score Decreased",
-                    "message":
-                        "Your Heart Health Score has decreased significantly since "
-                        "your previous assessment. Please consult your healthcare provider.",
-                    "timestamp": datetime.now(timezone.utc)
-                })
-                
-        if len(history) >= 2:
-            previous = history[-2]
-            improvement = latest["hhs"] - previous["hhs"]
-            if improvement >= 5:
-                notifications.append({
-                    "type": "positive",
-                    "priority": "low",
-                    "title": "Great Progress!",
-                    "message":
-                        "Your Heart Health Score has improved since your previous "
-                        "assessment. Keep maintaining your healthy lifestyle.",
-                    "timestamp": datetime.now(timezone.utc)
-                })
-
-        return notifications
-    
-    def generate_reminders(self):
-        reminders = []
-        all_patients = self.get_all_patients()
-        for patient_id in all_patients:
-            history = self.get_patient_history(patient_id)
-            if len(history)==0:
-                continue
-            latest=history[-1]
-            last_visit=latest["date"]
-            days=(datetime.now(timezone.utc)-last_visit).days
-            if days>=30:
-                reminders.append({
-                    "patient_id": patient_id,
-                    "type": "reminder",
-                    "priority": "medium",
-                    "title": "Assessment Due",
-                    "message":
-                        "It has been over 30 days since your last Heart Health "
-                        "assessment. Schedule your next assessment to continue "
-                        "monitoring your cardiovascular health.",
-                    "timestamp": datetime.now(timezone.utc)
-                })
-        return reminders
+    def get_patient(self, patient_id):
+        return patients_collection.find_one({"patient_id": patient_id})
     
     def save_payload(self,payload, encounter_timestamp=None, patient_profile=None):
         visit=payload["visit"]

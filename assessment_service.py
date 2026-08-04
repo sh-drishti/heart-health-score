@@ -1,7 +1,7 @@
 from dataclasses import asdict
 from datetime import datetime, timezone
 from typing import Any, Dict
-
+from notification import NotificationService
 
 def build_encounter_payload(
     *,
@@ -40,9 +40,10 @@ class AssessmentService:
     def __init__(self, repository: Any | None = None):
         if repository is None:
             from database import EncounterRepository
-
             repository = EncounterRepository()
+            
         self.repository = repository
+        self.notification_service = NotificationService(repository)
 
     def save_assessment(self, payload: Dict[str, Any], patient_profile: Dict[str, Any] | None = None) -> Dict[str, Any]:
         saved_at = datetime.now(timezone.utc)
@@ -51,8 +52,13 @@ class AssessmentService:
             encounter_timestamp=saved_at,
             patient_profile=patient_profile,
         )
+        patient_id = payload["visit"]["patient_id"]
+        try:
+            self.notification_service.process_assessment(patient_id)
+        except Exception as e:
+            print(f"Notification Error: {e}")
         return {
-            "patient_id": payload["visit"]["patient_id"],
+            "patient_id": patient_id,
             "visit_id": payload["visit"]["visit_id"],
             "timestamp": saved_at,
             "encounter_id": encounter_id,
