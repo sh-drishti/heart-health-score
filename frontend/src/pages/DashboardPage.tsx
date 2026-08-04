@@ -136,6 +136,7 @@ export function DashboardPage() {
 
                 <TabsContent value="parameters" className="mt-4">
                   <ParametersTab
+                    patientId={String(bundle.patient.Patient_ID)}
                     patientData={bundle.patient_data}
                     assessment={bundle.assessment}
                   />

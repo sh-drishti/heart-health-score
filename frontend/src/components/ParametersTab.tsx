@@ -1,5 +1,6 @@
-import type { Assessment, PatientData } from '@/types'
-import { DOMAINS, getLabel, SEVERITY_HEX } from '@/config/domains'
+import { useEffect, useState } from 'react'
+import type { Assessment, MonitoringData, PatientData } from '@/types'
+import { DOMAINS, getLabel } from '@/config/domains'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -12,19 +13,11 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { SeverityBadge } from './SeverityBadge'
 import { getLevel } from '@/config/domains'
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-} from 'recharts'
+import { fetchMonitoring } from '@/api/client'
+import { HhsTrendChart } from './monitoring/HhsTrendChart'
+import { DomainTrendChart } from './monitoring/DomainTrendChart'
+import { TrendInsightsCard } from './monitoring/TrendInsightsCard'
+import { Loader2 } from 'lucide-react'
 
 const FEATURE_TO_DOMAIN: Record<string, string> = {}
 for (const [domain, info] of Object.entries(DOMAINS)) {
@@ -32,6 +25,7 @@ for (const [domain, info] of Object.entries(DOMAINS)) {
 }
 
 interface Props {
+  patientId: string
   patientData: PatientData
   assessment: Assessment
 }
@@ -93,95 +87,78 @@ function ParameterSummary({ patientData }: { patientData: PatientData }) {
   )
 }
 
-function ContributionChart({ assessment }: { assessment: Assessment }) {
-  const data = assessment.domain_rows
-    .filter((r) => r['Total domain contribution'] > 0)
-    .map((r) => ({ name: r.Domain, value: r['Total domain contribution'] }))
+/**
+ * Longitudinal trends. Only patients with saved encounters have any, so this
+ * renders an explicit empty state rather than a blank chart for CSV patients.
+ */
+function MonitoringSection({ patientId }: { patientId: string }) {
+  const [data, setData] = useState<MonitoringData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [err, setErr] = useState<string | null>(null)
 
-  const COLORS = [
-    '#0d9488', '#6366f1', '#f59e0b', '#8b5cf6', '#14b8a6',
-    '#f43f5e', '#84cc16', '#06b6d4', '#a855f7', '#64748b',
-  ]
+  useEffect(() => {
+    let stale = false
+    setLoading(true)
+    setErr(null)
+    fetchMonitoring(patientId)
+      .then((result) => {
+        if (!stale) setData(result)
+      })
+      .catch((e) => {
+        if (!stale) setErr(String(e))
+      })
+      .finally(() => {
+        if (!stale) setLoading(false)
+      })
+    return () => {
+      stale = true
+    }
+  }, [patientId])
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading visit history…
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (err) {
+    return (
+      <Alert variant="destructive">
+        <AlertTitle>Could not load visit history</AlertTitle>
+        <AlertDescription>{err}</AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!data) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Visit History</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            No saved encounters for this patient, so there is nothing to trend.
+            History is recorded from the intake form onward; patients loaded from
+            the internal CSV have none.
+          </p>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Domain Contribution to HHS</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="relative h-[380px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={data}
-                dataKey="value"
-                nameKey="name"
-                innerRadius="55%"
-                outerRadius="85%"
-                paddingAngle={2}
-              >
-                {data.map((_, i) => (
-                  <Cell key={i} fill={COLORS[i % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip
-                formatter={(v) => [Number(v).toFixed(2)]}
-              />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="text-center -mt-6">
-              <div className="text-xs text-muted-foreground">Total</div>
-              <div className="text-xl font-bold">{assessment.burden.total.toFixed(2)}</div>
-            </div>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function SeverityChart({ assessment }: { assessment: Assessment }) {
-  const data = Object.entries(assessment.domain_severities)
-    .map(([domain, severity]) => {
-      const status = severity < 0.33 ? 'Low' : severity < 0.67 ? 'Moderate' : 'High'
-      return { domain, severity, status }
-    })
-    .sort((a, b) => a.severity - b.severity)
-
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base">Domain Severity Overview</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-[380px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} layout="vertical" margin={{ left: 20, right: 40 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-              <XAxis type="number" domain={[0, 1]} />
-              <YAxis type="category" dataKey="domain" width={110} tick={{ fontSize: 12 }} />
-              <Tooltip formatter={(v) => Number(v).toFixed(2)} />
-              <Bar dataKey="severity" radius={[0, 4, 4, 0]}>
-                {data.map((d, i) => (
-                  <Cell
-                    key={i}
-                    fill={
-                      d.status === 'Low'
-                        ? SEVERITY_HEX.ok
-                        : d.status === 'Moderate'
-                          ? SEVERITY_HEX.warn
-                          : SEVERITY_HEX.risk
-                    }
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </CardContent>
-    </Card>
+    <>
+      <HhsTrendChart trend={data.history.hhs_trend} />
+      {/* Keyed so the per-domain visibility toggles reset when the patient
+          changes; the default selection depends on that patient's burdens. */}
+      <DomainTrendChart key={patientId} domainTrends={data.history.domain_trends} />
+      <TrendInsightsCard insights={data.insights} visitCount={data.visit_count} />
+    </>
   )
 }
 
@@ -245,14 +222,11 @@ function RedFlags({ assessment }: { assessment: Assessment }) {
   )
 }
 
-export function ParametersTab({ patientData, assessment }: Props) {
+export function ParametersTab({ patientId, patientData, assessment }: Props) {
   return (
     <div className="space-y-4">
       <ParameterSummary patientData={patientData} />
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <ContributionChart assessment={assessment} />
-        <SeverityChart assessment={assessment} />
-      </div>
+      <MonitoringSection patientId={patientId} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BurdenBreakdown assessment={assessment} />
         <RedFlags assessment={assessment} />
