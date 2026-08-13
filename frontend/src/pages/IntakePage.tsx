@@ -2,7 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   DuplicateVisitConflict,
   fetchIntakeSchema,
+  fetchMyPrefill,
   saveEncounter,
+  saveMyEncounter,
   scoreSubmission,
 } from '@/api/client'
 import type {
@@ -10,6 +12,7 @@ import type {
   Availability,
   FieldDef,
   FieldEntry,
+  IntakePrefill,
   IntakeSchema,
   PatientProfile,
   SaveResult,
@@ -31,7 +34,10 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertTriangle, CheckCircle2, Loader2, Save } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '@/auth/AuthContext'
+import { buttonVariants } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 
 const VISIT_TAB = 'visit'
 const SAVE_TAB = 'save'
@@ -87,6 +93,11 @@ export function IntakePage() {
   const { user } = useAuth()
   const reviewer = user?.name || user?.email || ''
 
+  // A patient records their own visit: the server owns the patient id and the
+  // visit id, so those inputs are hidden rather than shown and ignored.
+  const selfMode = user?.role === 'patient'
+  const [prefill, setPrefill] = useState<IntakePrefill | null>(null)
+
   const [visit, setVisit] = useState<VisitInfo | null>(null)
   const [patientProfile, setPatientProfile] = useState<PatientProfile>(initialPatientProfile)
   const [entries, setEntries] = useState<Record<string, FieldEntry>>({})
@@ -104,14 +115,39 @@ export function IntakePage() {
   const [duplicate, setDuplicate] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchIntakeSchema()
-      .then((s) => {
+    let stale = false
+
+    // A returning patient starts from their last submission rather than a blank
+    // 48-field form. The prefill arrives with every measurement age already
+    // advanced, so reused values keep their real staleness.
+    const loadPrefill = selfMode
+      ? fetchMyPrefill().catch(() => null)
+      : Promise.resolve(null)
+
+    Promise.all([fetchIntakeSchema(), loadPrefill])
+      .then(([s, previous]) => {
+        if (stale) return
         setSchema(s)
-        setVisit(initialVisit(s.visit_fields, reviewer))
         setNote(s.clinician_note_default)
+        setPrefill(previous)
+
+        const base = initialVisit(s.visit_fields, reviewer)
+        if (previous) {
+          setVisit({ ...base, ...previous.visit, visit_date: today() })
+          setEntries(previous.fields)
+          setLpaUnit(previous.lpa_unit)
+        } else {
+          setVisit(base)
+        }
       })
-      .catch((e) => setSchemaErr(String(e)))
-  }, [reviewer])
+      .catch((e) => {
+        if (!stale) setSchemaErr(String(e))
+      })
+
+    return () => {
+      stale = true
+    }
+  }, [reviewer, selfMode])
 
   const submission: Submission | null = useMemo(() => {
     if (!visit) return null
@@ -173,10 +209,14 @@ export function IntakePage() {
     setSaveErr(null)
     setDuplicate(null)
     try {
-      const result = await saveEncounter({
-        ...submission,
-        allow_duplicate_visit: allowDuplicate,
-      })
+      // A patient posts to /me/encounters, where the server assigns both the
+      // patient id and the visit id — so there is no duplicate visit to resolve.
+      const result = selfMode
+        ? await saveMyEncounter(submission)
+        : await saveEncounter({
+            ...submission,
+            allow_duplicate_visit: allowDuplicate,
+          })
       setSaved(result)
     } catch (e) {
       if (e instanceof DuplicateVisitConflict) {
@@ -223,31 +263,55 @@ export function IntakePage() {
 
           {/* Patient & visit metadata */}
           <TabsContent value={VISIT_TAB} className="mt-4">
+            {selfMode && prefill && (
+              <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+                <p className="font-medium">Continuing from your last visit</p>
+                <p className="text-muted-foreground mt-0.5 leading-relaxed">
+                  Your previous answers are filled in, and each measurement is
+                  now recorded as {prefill.months_since_last_visit} months older.
+                  Update anything that has changed — especially any test you have
+                  had redone, so its date is right.
+                </p>
+              </div>
+            )}
+
             <div className="rounded-xl border bg-card shadow-xs p-4">
-              <h3 className="text-sm font-semibold mb-1">Patient and visit details</h3>
+              <h3 className="text-sm font-semibold mb-1">
+                {selfMode ? 'About you' : 'Patient and visit details'}
+              </h3>
               <p className="text-xs text-muted-foreground mb-4">
-                Core administrative and demographic fields for the active encounter.
+                {selfMode
+                  ? 'Your details for this visit. Everything is saved against your own record.'
+                  : 'Core administrative and demographic fields for the active encounter.'}
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <Label className="text-xs mb-1 block">
-                    {visitByKey.patient_id.label}
-                  </Label>
-                  <Input
-                    value={visit.patient_id}
-                    onChange={(e) => patchVisit({ patient_id: e.target.value })}
-                    className="h-8"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs mb-1 block">{visitByKey.visit_id.label}</Label>
-                  <Input
-                    value={visit.visit_id}
-                    onChange={(e) => patchVisit({ visit_id: e.target.value })}
-                    className="h-8"
-                  />
-                </div>
+                {/* Hidden in self mode: the server assigns both ids, so showing
+                    an input that is silently ignored would be a lie. */}
+                {!selfMode && (
+                  <div>
+                    <Label className="text-xs mb-1 block">
+                      {visitByKey.patient_id.label}
+                    </Label>
+                    <Input
+                      value={visit.patient_id}
+                      onChange={(e) => patchVisit({ patient_id: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                )}
+                {!selfMode && (
+                  <div>
+                    <Label className="text-xs mb-1 block">
+                      {visitByKey.visit_id.label}
+                    </Label>
+                    <Input
+                      value={visit.visit_id}
+                      onChange={(e) => patchVisit({ visit_id: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs mb-1 block">
                     {visitByKey.visit_date.label}
@@ -295,16 +359,20 @@ export function IntakePage() {
                   ),
                 )}
 
-                <div>
-                  <Label className="text-xs mb-1 block">
-                    {visitByKey.reviewed_by.label}
-                  </Label>
-                  <Input
-                    value={visit.reviewed_by}
-                    onChange={(e) => patchVisit({ reviewed_by: e.target.value })}
-                    className="h-8"
-                  />
-                </div>
+                {/* Self-recorded visits are stamped "Self-reported" server-side
+                    so a clinician can tell them from a reviewed encounter. */}
+                {!selfMode && (
+                  <div>
+                    <Label className="text-xs mb-1 block">
+                      {visitByKey.reviewed_by.label}
+                    </Label>
+                    <Input
+                      value={visit.reviewed_by}
+                      onChange={(e) => patchVisit({ reviewed_by: e.target.value })}
+                      className="h-8"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="mt-5 border-t pt-5">
@@ -588,11 +656,15 @@ export function IntakePage() {
               <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
                 <div>
                   <dt className="text-xs text-muted-foreground">Patient</dt>
-                  <dd className="font-medium">{visit.patient_id || '—'}</dd>
+                  <dd className="font-medium">
+                    {selfMode ? 'You' : visit.patient_id || '—'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Visit</dt>
-                  <dd className="font-medium">{visit.visit_id || '—'}</dd>
+                  <dd className="font-medium">
+                    {selfMode ? 'Assigned on save' : visit.visit_id || '—'}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs text-muted-foreground">Date</dt>
@@ -609,7 +681,7 @@ export function IntakePage() {
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   onClick={() => doSave(false)}
-                  disabled={saving || !visit.patient_id || !visit.visit_id}
+                  disabled={saving || (!selfMode && (!visit.patient_id || !visit.visit_id))}
                 >
                   {saving ? (
                     <>
@@ -617,11 +689,12 @@ export function IntakePage() {
                     </>
                   ) : (
                     <>
-                      <Save className="h-4 w-4" /> Save Assessment
+                      <Save className="h-4 w-4" />
+                      {selfMode ? 'Save my visit' : 'Save Assessment'}
                     </>
                   )}
                 </Button>
-                {(!visit.patient_id || !visit.visit_id) && (
+                {!selfMode && (!visit.patient_id || !visit.visit_id) && (
                   <span className="text-xs text-muted-foreground">
                     Patient ID and Visit ID are required.
                   </span>
@@ -651,17 +724,44 @@ export function IntakePage() {
               {saved && (
                 <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-3">
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-400 mb-1.5">
-                    <CheckCircle2 className="h-4 w-4" /> Assessment saved
+                    <CheckCircle2 className="h-4 w-4" />
+                    {selfMode ? 'Visit saved' : 'Assessment saved'}
                   </div>
-                  <div className="text-xs text-muted-foreground space-y-0.5">
-                    <div>Patient ID: {saved.patient_id}</div>
-                    <div>Visit ID: {saved.visit_id}</div>
-                    <div>Encounter ID: {saved.encounter_id}</div>
-                    <div>Timestamp: {saved.timestamp}</div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Available for review under the MongoDB payload source.
-                  </p>
+
+                  {selfMode ? (
+                    <>
+                      <p className="text-sm">
+                        Your Heart Health Score is{' '}
+                        <span className="font-semibold tabular-nums">
+                          {saved.assessment.hhs}
+                        </span>
+                        .
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        Recorded as {saved.visit_id}. Record another visit later
+                        to see how it changes over time — a trend needs at least
+                        two.
+                      </p>
+                      <Link
+                        to="/my-health"
+                        className={cn(buttonVariants({ size: 'sm' }), 'mt-3')}
+                      >
+                        See my full result
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-xs text-muted-foreground space-y-0.5">
+                        <div>Patient ID: {saved.patient_id}</div>
+                        <div>Visit ID: {saved.visit_id}</div>
+                        <div>Encounter ID: {saved.encounter_id}</div>
+                        <div>Timestamp: {saved.timestamp}</div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Available for review under the MongoDB payload source.
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
             </div>

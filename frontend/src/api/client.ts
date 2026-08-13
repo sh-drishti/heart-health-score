@@ -15,6 +15,7 @@ import type {
   AuthUser,
   DashboardBundle,
   DuplicateVisitError,
+  IntakePrefill,
   IntakeSchema,
   MonitoringData,
   SavedNote,
@@ -117,6 +118,24 @@ export async function login(email: string, password: string): Promise<AuthUser> 
   return pair.user
 }
 
+/** Open sign-up. Always creates a patient account and signs them straight in. */
+export async function register(
+  email: string,
+  password: string,
+  name: string,
+): Promise<AuthUser> {
+  const res = await send('/auth/register', {
+    method: 'POST',
+    body: { email, password, name },
+    label: 'register',
+  })
+  if (!res.ok) throw new ApiError('register', res.status, await detailOf(res))
+
+  const pair = (await res.json()) as TokenPair
+  setSession(pair)
+  return pair.user
+}
+
 export const logout = endSession
 
 export async function fetchMe(): Promise<AuthUser> {
@@ -177,6 +196,49 @@ export async function fetchMonitoring(patientId: string): Promise<MonitoringData
     { label: 'monitoring' },
   )
   return data.monitoring ?? null
+}
+
+// --- Patient self-service ---------------------------------------------------
+//
+// These take no patient id: the server resolves the record from the token, which
+// is what stops a patient reading or writing anyone else's data.
+
+export function fetchMyDashboard(): Promise<DashboardBundle> {
+  return json<DashboardBundle>('/me/dashboard', { label: 'my dashboard' })
+}
+
+export async function fetchMyMonitoring(): Promise<MonitoringData | null> {
+  const data = await json<{ monitoring: MonitoringData | null }>('/me/monitoring', {
+    label: 'my monitoring',
+  })
+  return data.monitoring ?? null
+}
+
+export async function fetchMyNote(): Promise<SavedNote | null> {
+  const data = await json<{ note: SavedNote | null }>('/me/note', { label: 'my note' })
+  return data.note ?? null
+}
+
+/** Null on a first visit, which is the signal to start from schema defaults. */
+export async function fetchMyPrefill(): Promise<IntakePrefill | null> {
+  const data = await json<{ prefill: IntakePrefill | null }>('/me/intake/prefill', {
+    label: 'prefill',
+  })
+  return data.prefill ?? null
+}
+
+/**
+ * Record an encounter for the signed-in patient.
+ *
+ * `visit.patient_id` and `visit.visit_id` are ignored by the server, so repeat
+ * submissions append a new visit rather than colliding — no 409 to handle.
+ */
+export function saveMyEncounter(submission: Submission): Promise<SaveResult> {
+  return json<SaveResult>('/me/encounters', {
+    method: 'POST',
+    body: submission,
+    label: 'save',
+  })
 }
 
 // --- Intake -----------------------------------------------------------------

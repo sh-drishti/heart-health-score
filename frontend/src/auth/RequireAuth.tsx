@@ -1,4 +1,4 @@
-import { Navigate, useLocation } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from './AuthContext'
 import type { Role } from '@/types'
@@ -42,6 +42,13 @@ export function RequireAuth({
   return <>{children}</>
 }
 
+/** Where a role belongs, so this screen can offer a way out rather than a dead end. */
+const HOME: Record<Role, string> = {
+  clinician: '/dashboard',
+  staff: '/entry',
+  patient: '/my-health',
+}
+
 function WrongRole({ role }: { role: Role }) {
   const { signOut } = useAuth()
 
@@ -54,8 +61,8 @@ function WrongRole({ role }: { role: Role }) {
         <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
           {role === 'patient' ? (
             <>
-              Patient accounts do not have a web view yet — your Heart Health
-              Score and trends are in the mobile app.
+              That view is for clinical staff reviewing other people's records.
+              Yours is under My Heart Health.
             </>
           ) : (
             <>
@@ -64,12 +71,20 @@ function WrongRole({ role }: { role: Role }) {
             </>
           )}
         </p>
-        <button
-          onClick={signOut}
-          className="mt-5 text-sm font-medium text-primary hover:underline underline-offset-2"
-        >
-          Sign in as a different user
-        </button>
+        <div className="mt-5 flex flex-col items-center gap-2">
+          <Link
+            to={HOME[role]}
+            className="text-sm font-medium text-primary hover:underline underline-offset-2"
+          >
+            Go to my workspace
+          </Link>
+          <button
+            onClick={signOut}
+            className="text-sm text-muted-foreground hover:underline underline-offset-2"
+          >
+            Sign in as a different user
+          </button>
+        </div>
       </div>
     </div>
   )

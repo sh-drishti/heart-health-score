@@ -28,6 +28,11 @@ interface Props {
   patientId: string
   patientData: PatientData
   assessment: Assessment
+  /**
+   * How to load trends. Clinicians read a patient by id; a patient reads
+   * /me/monitoring, which takes no id at all. Defaults to the clinician route.
+   */
+  loadMonitoring?: (patientId: string) => Promise<MonitoringData | null>
 }
 
 function ParameterSummary({ patientData }: { patientData: PatientData }) {
@@ -91,7 +96,13 @@ function ParameterSummary({ patientData }: { patientData: PatientData }) {
  * Longitudinal trends. Only patients with saved encounters have any, so this
  * renders an explicit empty state rather than a blank chart for CSV patients.
  */
-function MonitoringSection({ patientId }: { patientId: string }) {
+function MonitoringSection({
+  patientId,
+  load,
+}: {
+  patientId: string
+  load: (patientId: string) => Promise<MonitoringData | null>
+}) {
   const [data, setData] = useState<MonitoringData | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState<string | null>(null)
@@ -100,7 +111,7 @@ function MonitoringSection({ patientId }: { patientId: string }) {
     let stale = false
     setLoading(true)
     setErr(null)
-    fetchMonitoring(patientId)
+    load(patientId)
       .then((result) => {
         if (!stale) setData(result)
       })
@@ -113,7 +124,7 @@ function MonitoringSection({ patientId }: { patientId: string }) {
     return () => {
       stale = true
     }
-  }, [patientId])
+  }, [patientId, load])
 
   if (loading) {
     return (
@@ -222,11 +233,16 @@ function RedFlags({ assessment }: { assessment: Assessment }) {
   )
 }
 
-export function ParametersTab({ patientId, patientData, assessment }: Props) {
+export function ParametersTab({
+  patientId,
+  patientData,
+  assessment,
+  loadMonitoring = fetchMonitoring,
+}: Props) {
   return (
     <div className="space-y-4">
       <ParameterSummary patientData={patientData} />
-      <MonitoringSection patientId={patientId} />
+      <MonitoringSection patientId={patientId} load={loadMonitoring} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <BurdenBreakdown assessment={assessment} />
         <RedFlags assessment={assessment} />

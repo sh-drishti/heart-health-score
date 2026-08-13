@@ -17,6 +17,15 @@ const VIEWS: Array<{
   roles: Role[]
 }> = [
   {
+    to: '/my-health',
+    icon: HeartPulse,
+    title: 'My Heart Health',
+    role: 'Assess your own',
+    body: 'Enter what you know — blood pressure, cholesterol, whether you smoke — and get a Heart Health Score with the reasons behind it. Come back to track how it moves.',
+    action: 'See my score',
+    roles: ['patient'],
+  },
+  {
     to: '/dashboard',
     icon: Stethoscope,
     title: 'Clinical Dashboard',
@@ -30,7 +39,7 @@ const VIEWS: Array<{
     icon: ClipboardPlus,
     title: 'Encounter Entry',
     role: 'For intake staff',
-    body: 'Record a new encounter across 48 clinical inputs, see the score update live, and save it for review.',
+    body: 'Record an encounter across 48 clinical inputs on behalf of someone, see the score update live, and save it for review.',
     action: 'Start an encounter',
     roles: ['clinician', 'staff'],
   },
@@ -73,7 +82,7 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {VIEWS.map((view) => {
               // Signed out, the card leads to sign-in and returns here after.
               // Signed in without the role, it is shown but not offered.
@@ -105,10 +114,15 @@ export function LandingPage() {
                 )
               }
 
+              // Signed out, a self-assessor most likely has no account yet, so
+              // that card leads to sign-up; the clinical cards lead to sign-in
+              // because those accounts are issued, not created.
+              const signedOutTo = view.roles.includes('patient') ? '/register' : '/login'
+
               return (
                 <Link
                   key={view.to}
-                  to={user === null ? '/login' : view.to}
+                  to={user === null ? signedOutTo : view.to}
                   state={user === null ? { from: view.to } : undefined}
                   className="group rounded-2xl border bg-card p-6 shadow-xs transition-all hover:shadow-md hover:border-primary/40 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                 >
@@ -127,7 +141,11 @@ export function LandingPage() {
                   </p>
 
                   <span className="inline-flex items-center gap-1.5 text-sm font-medium text-primary mt-5">
-                    {user === null ? `Sign in — ${view.action.toLowerCase()}` : view.action}
+                    {user === null
+                      ? view.roles.includes('patient')
+                        ? 'Get started'
+                        : `Sign in — ${view.action.toLowerCase()}`
+                      : view.action}
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
                   </span>
                 </Link>

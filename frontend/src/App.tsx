@@ -5,18 +5,27 @@ import { AuthProvider } from '@/auth/AuthContext'
 import { RequireAuth } from '@/auth/RequireAuth'
 import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
+import { RegisterPage } from '@/pages/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { MyHealthPage } from '@/pages/MyHealthPage'
 import { IntakePage } from '@/pages/IntakePage'
+import { useAuth } from '@/auth/AuthContext'
 
-// /dashboard and /entry are separate role-facing views with no nav between
-// them. / is the chooser. Shared components live under src/components.
+// Three surfaces: /dashboard for clinicians reviewing anyone, /my-health for a
+// patient reading their own record, and /entry — the same 48-field form for all
+// three roles, since a patient records their own visit and staff are there to
+// help someone through it.
 //
-// The guards below mirror the roles the API enforces (see backend/main.py), so
-// a user never reaches a view whose every request would come back 403.
+// The guards mirror the roles the API enforces (see backend/main.py), so a user
+// never reaches a view whose every request would come back 403.
 function IntakeLayout() {
+  const { user } = useAuth()
+
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader subtitle="Encounter Entry" />
+      <AppHeader
+        subtitle={user?.role === 'patient' ? 'Record a Visit' : 'Encounter Entry'}
+      />
       <main className="max-w-[1600px] mx-auto px-6 py-5">
         <IntakePage />
       </main>
@@ -31,6 +40,7 @@ function App() {
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/register" element={<RegisterPage />} />
           <Route
             path="/dashboard"
             element={
@@ -40,9 +50,17 @@ function App() {
             }
           />
           <Route
+            path="/my-health"
+            element={
+              <RequireAuth roles={['patient']}>
+                <MyHealthPage />
+              </RequireAuth>
+            }
+          />
+          <Route
             path="/entry"
             element={
-              <RequireAuth roles={['clinician', 'staff']}>
+              <RequireAuth roles={['clinician', 'staff', 'patient']}>
                 <IntakeLayout />
               </RequireAuth>
             }

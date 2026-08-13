@@ -139,6 +139,26 @@ export interface AuthUser {
   patient_id: string | null
 }
 
+/**
+ * A returning patient's last submission, ready to re-edit.
+ *
+ * `months_old` on every numeric field has already been advanced by
+ * `months_since_last_visit`, so reused measurements keep their real age and
+ * data confidence decays honestly.
+ */
+export interface IntakePrefill {
+  from_visit_id: string
+  months_since_last_visit: number
+  visit: {
+    age: number
+    biological_sex: string
+    region_profile: string
+    clinical_setting: string
+  }
+  fields: Record<string, FieldEntry>
+  lpa_unit: string
+}
+
 export interface TokenPair {
   access_token: string
   refresh_token: string
