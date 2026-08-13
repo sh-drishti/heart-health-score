@@ -157,7 +157,14 @@ def actor_name(user: Dict[str, Any]) -> str:
 # --- Routes -----------------------------------------------------------------
 
 
-@router.post("/auth/login")
+@router.post(
+    "/auth/login",
+    summary="Sign in and get a token pair",
+    responses={
+        401: {"description": "Incorrect email or password."},
+        403: {"description": "The account has been deactivated."},
+    },
+)
 def login(body: LoginIn):
     user = users.get_by_email(body.email)
 
@@ -178,11 +185,15 @@ def login(body: LoginIn):
     return _session(user)
 
 
-@router.post("/auth/refresh")
+@router.post(
+    "/auth/refresh",
+    summary="Exchange a refresh token for a new pair",
+    responses={401: {"description": "Refresh token is invalid, expired, or already used."}},
+)
 def refresh(body: RefreshIn):
     """
-    Exchange a refresh token for a new pair. The presented token is revoked,
-    so replaying it fails.
+    Refresh tokens rotate: the presented one is revoked as it is redeemed, so
+    replaying it returns 401. Store the new `refresh_token` from the response.
     """
 
     _plaintext, next_hash = new_refresh_token()
@@ -206,7 +217,7 @@ def refresh(body: RefreshIn):
     }
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", summary="Revoke one session")
 def logout(body: RefreshIn):
     """Revoke one session. Succeeds even for an unknown token — nothing to leak."""
 
@@ -214,23 +225,48 @@ def logout(body: RefreshIn):
     return {"status": "ok"}
 
 
-@router.get("/auth/me")
+@router.get(
+    "/auth/me",
+    summary="The signed-in account [any role]",
+    responses={401: {"description": "Missing, malformed, or expired access token."}},
+)
 def read_me(user: Dict[str, Any] = Depends(current_user)):
     return {"user": users.public_user(user)}
 
 
-@router.post("/auth/logout-all")
+@router.post(
+    "/auth/logout-all",
+    summary="Revoke every session for the caller [any role]",
+    responses={401: {"description": "Missing, malformed, or expired access token."}},
+)
 def logout_all(user: Dict[str, Any] = Depends(current_user)):
     revoked = users.revoke_all(user["_id"])
     return {"status": "ok", "sessions_revoked": revoked}
 
 
-@router.get("/auth/users")
+@router.get(
+    "/auth/users",
+    summary="List accounts [clinician]",
+    responses={
+        401: {"description": "Missing, malformed, or expired access token."},
+        403: {"description": "Requires: clinician."},
+    },
+)
 def list_accounts(_: Dict[str, Any] = Depends(require_role("clinician"))):
     return {"users": users.list_users()}
 
 
-@router.post("/auth/users", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/auth/users",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create an account [clinician]",
+    responses={
+        401: {"description": "Missing, malformed, or expired access token."},
+        403: {"description": "Requires: clinician."},
+        409: {"description": "An account already exists for that email."},
+        422: {"description": "Invalid role, email, password length, or patient_id linkage."},
+    },
+)
 def create_account(
     body: CreateUserIn,
     _: Dict[str, Any] = Depends(require_role("clinician")),

@@ -44,7 +44,65 @@ async def lifespan(_app: FastAPI):
     yield
 
 
-app = FastAPI(title="HHS Dashboard API", version="1.1.0", lifespan=lifespan)
+API_DESCRIPTION = """
+Cardiovascular risk scoring on the HHS-v1.2 engine, for the clinical web
+dashboard and the mobile app.
+
+### Authenticating in this page
+
+1. `POST /api/v1/auth/login` with an account's email and password.
+2. Copy `access_token` from the response.
+3. Click **Authorize** (top right) and paste it. Every request below then
+   carries it, and "Try it out" works for real.
+
+Accounts are not self-serve — a clinician creates them with
+`POST /api/v1/auth/users`, and the first one comes from `seed_users.py`.
+
+### Roles
+
+Each endpoint's summary ends with the roles that may call it.
+
+| Role | Can do |
+|---|---|
+| `clinician` | Review any patient, write notes and validations, run intake, manage accounts |
+| `staff` | Intake only, plus listing patient ids to check for duplicates |
+| `patient` | Own record only, through `/me/*` |
+
+A `patient` token on `/patients/{id}` returns **403** by design: patient clients
+resolve their record from the token, never from the URL, so no patient can reach
+another patient's data by editing a path.
+
+### Tokens
+
+Access tokens are short-lived (30 min by default). When one expires the API
+returns **401**; exchange the refresh token at `POST /api/v1/auth/refresh` for a
+new pair. Refresh tokens **rotate** — redeeming one revokes it, so a replay is a
+401 and logout genuinely ends the session.
+"""
+
+TAGS_METADATA = [
+    {"name": "auth", "description": "Sign in, refresh, sign out, and account management."},
+    {"name": "patients", "description": "Patient lookup and the full dashboard bundle."},
+    {"name": "notes", "description": "Clinical review notes, one current note per patient."},
+    {"name": "monitoring", "description": "Longitudinal trends across a patient's encounters."},
+    {"name": "intake", "description": "Encounter entry: form schema, live scoring, and saving."},
+    {
+        "name": "patient self-service",
+        "description": (
+            "The same data as the clinician routes, from the same service "
+            "functions, but scoped to the caller's own record by their token."
+        ),
+    },
+    {"name": "system", "description": "Unauthenticated service probes."},
+]
+
+app = FastAPI(
+    title="HHS Dashboard API",
+    version="1.1.0",
+    description=API_DESCRIPTION,
+    openapi_tags=TAGS_METADATA,
+    lifespan=lifespan,
+)
 
 # Comma-separated in CORS_ORIGINS so a deployed frontend origin does not need a
 # code change. Native clients send no Origin header, so this only affects the
@@ -73,6 +131,33 @@ Source = Query(default="csv", pattern="^(csv|payload)$")
 # Role shorthands. Staff run intake; clinicians review, so they can do both.
 Clinician = Depends(auth.require_role("clinician"))
 ClinicalUser = Depends(auth.require_role("clinician", "staff"))
+
+# The role a route needs is enforced by a dependency, which OpenAPI cannot see —
+# it only records that *some* security applies. Without this the docs would say
+# every route is "secured" and leave a reader guessing which token works, so the
+# roles go in the summary (visible on the collapsed list) and the 401/403 shapes
+# are declared explicitly.
+UNAUTHORIZED = {"description": "Missing, malformed, or expired access token."}
+
+
+def guarded(*roles: str) -> Dict[str, Any]:
+    """Route kwargs documenting who may call it. Pair with the matching Depends."""
+
+    return {
+        "responses": {
+            401: UNAUTHORIZED,
+            403: {
+                "description": (
+                    "Authenticated, but this account's role may not call this "
+                    f"endpoint. Requires: {', '.join(roles)}."
+                )
+            },
+        }
+    }
+
+
+def roles_note(*roles: str) -> str:
+    return f" [{', '.join(roles)}]"
 
 
 class ValidationIn(BaseModel):
@@ -139,9 +224,9 @@ class SubmissionIn(BaseModel):
         return data
 
 
-@app.get("/api/health")
+@app.get("/api/health", tags=["system"], summary="Liveness probe")
 def health():
-    """Unauthenticated liveness probe."""
+    """The one route that needs no token, so a load balancer can probe it."""
     return {"status": "ok"}
 
 
@@ -152,8 +237,17 @@ api.include_router(auth.router)
 # --- Patients (clinician / staff) -------------------------------------------
 
 
-@api.get("/patients")
+@api.get(
+    "/patients",
+    tags=["patients"],
+    summary="List patient ids" + roles_note("clinician", "staff"),
+    **guarded("clinician", "staff"),
+)
 def list_patients(source: str = Source, _: Dict[str, Any] = ClinicalUser):
+    """
+    Ids only. Staff are included so intake can check whether a patient already
+    exists before creating a duplicate; opening a record stays clinician-only.
+    """
     try:
         ids = service.get_patient_ids(source)
     except Exception as exc:
@@ -161,8 +255,14 @@ def list_patients(source: str = Source, _: Dict[str, Any] = ClinicalUser):
     return {"patient_ids": ids}
 
 
-@api.get("/patients/{patient_id}")
+@api.get(
+    "/patients/{patient_id}",
+    tags=["patients"],
+    summary="Full dashboard bundle for a patient" + roles_note("clinician"),
+    **guarded("clinician"),
+)
 def patient_dashboard(patient_id: str, source: str = Source, _: Dict[str, Any] = Clinician):
+    """`{patient, patient_data, assessment}`, plus `visit` and `clinician_note` for the payload source."""
     try:
         bundle = service.get_dashboard(patient_id, source)
     except Exception as exc:
@@ -174,8 +274,14 @@ def patient_dashboard(patient_id: str, source: str = Source, _: Dict[str, Any] =
     return bundle
 
 
-@api.post("/validation")
+@api.post(
+    "/validation",
+    tags=["patients"],
+    summary="Record a doctor's agreement with the score" + roles_note("clinician"),
+    **guarded("clinician"),
+)
 def create_validation(validation: ValidationIn, _: Dict[str, Any] = Clinician):
+    """Held in memory only: restarting the service discards these."""
     saved = service.save_validation(validation.model_dump())
     return {"status": "ok", "validation": saved}
 
@@ -183,7 +289,12 @@ def create_validation(validation: ValidationIn, _: Dict[str, Any] = Clinician):
 # --- Clinical review notes --------------------------------------------------
 
 
-@api.get("/patients/{patient_id}/note")
+@api.get(
+    "/patients/{patient_id}/note",
+    tags=["notes"],
+    summary="Read a patient's review note" + roles_note("clinician"),
+    **guarded("clinician"),
+)
 def read_note(patient_id: str, _: Dict[str, Any] = Clinician):
     """Saved review note for a patient. `note` is null when none exists."""
     try:
@@ -194,9 +305,19 @@ def read_note(patient_id: str, _: Dict[str, Any] = Clinician):
     return {"patient_id": patient_id, "note": saved}
 
 
-@api.put("/patients/{patient_id}/note")
+@api.put(
+    "/patients/{patient_id}/note",
+    tags=["notes"],
+    summary="Save a patient's review note" + roles_note("clinician"),
+    **guarded("clinician"),
+)
 def write_note(patient_id: str, body: NoteIn, user: Dict[str, Any] = Clinician):
-    """Save (upsert) the review note for a patient, attributed to the caller."""
+    """
+    Upsert: one current note per patient.
+
+    The author is the signed-in account and is not accepted from the request —
+    sending one has no effect.
+    """
     try:
         saved = notes.save_note(patient_id, body.note, auth.actor_name(user))
     except Exception as exc:
@@ -208,7 +329,12 @@ def write_note(patient_id: str, body: NoteIn, user: Dict[str, Any] = Clinician):
 # --- Monitoring / trends ----------------------------------------------------
 
 
-@api.get("/patients/{patient_id}/monitoring")
+@api.get(
+    "/patients/{patient_id}/monitoring",
+    tags=["monitoring"],
+    summary="Trend history for a patient" + roles_note("clinician"),
+    **guarded("clinician"),
+)
 def read_monitoring(patient_id: str, _: Dict[str, Any] = Clinician):
     """
     Trend history across a patient's encounters.
@@ -228,24 +354,56 @@ def read_monitoring(patient_id: str, _: Dict[str, Any] = Clinician):
 # --- Intake (data entry) ----------------------------------------------------
 
 
-@api.get("/intake/schema")
+@api.get(
+    "/intake/schema",
+    tags=["intake"],
+    summary="Intake form field definitions" + roles_note("clinician", "staff"),
+    **guarded("clinician", "staff"),
+)
 def intake_form_schema(_: Dict[str, Any] = ClinicalUser):
-    """Field definitions for the intake form: bounds, defaults, units, labels."""
+    """
+    48 fields with bounds, defaults, units and labels, derived from the engine's
+    own metadata — so a client never hardcodes the form.
+    """
     return intake_schema.schema()
 
 
-@api.post("/intake/score")
+@api.post(
+    "/intake/score",
+    tags=["intake"],
+    summary="Score a submission without saving" + roles_note("clinician", "staff"),
+    **guarded("clinician", "staff"),
+)
 def intake_score(submission: SubmissionIn, _: Dict[str, Any] = ClinicalUser):
-    """Score a submission without saving. Drives the live preview."""
+    """Drives the live preview, so it is called on every edit. Writes nothing."""
     try:
         return {"assessment": intake.score(submission.to_submission())}
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 
 
-@api.post("/intake/encounters")
+@api.post(
+    "/intake/encounters",
+    tags=["intake"],
+    summary="Score and save an encounter" + roles_note("clinician", "staff"),
+    responses={
+        401: UNAUTHORIZED,
+        403: {"description": "Requires: clinician, staff."},
+        409: {
+            "description": (
+                "This visit_id already exists for the patient. The body carries "
+                "the existing encounter; resubmit with allow_duplicate_visit "
+                "to save anyway."
+            )
+        },
+    },
+)
 def intake_save(submission: SubmissionIn, user: Dict[str, Any] = ClinicalUser):
-    """Score and persist an encounter to MongoDB."""
+    """
+    Persists to MongoDB.
+
+    A blank `visit.reviewed_by` is filled in from the signed-in account.
+    """
 
     payload = submission.to_submission()
     # The signed-in account is the authoritative reviewer; the form field is
@@ -283,8 +441,14 @@ def intake_save(submission: SubmissionIn, user: Dict[str, Any] = ClinicalUser):
 # the patient_id comes from the token rather than the path.
 
 
-@api.get("/me/dashboard")
+@api.get(
+    "/me/dashboard",
+    tags=["patient self-service"],
+    summary="The caller's own dashboard bundle" + roles_note("patient"),
+    **guarded("patient"),
+)
 def my_dashboard(patient_id: str = Depends(auth.current_patient_id)):
+    """Same shape as `/patients/{id}`, resolved from the token."""
     try:
         bundle = service.get_dashboard(patient_id, "payload")
     except Exception as exc:
@@ -299,8 +463,14 @@ def my_dashboard(patient_id: str = Depends(auth.current_patient_id)):
     return bundle
 
 
-@api.get("/me/monitoring")
+@api.get(
+    "/me/monitoring",
+    tags=["patient self-service"],
+    summary="The caller's own trend history" + roles_note("patient"),
+    **guarded("patient"),
+)
 def my_monitoring(patient_id: str = Depends(auth.current_patient_id)):
+    """Same shape as `/patients/{id}/monitoring`, resolved from the token."""
     try:
         data = monitoring.get_monitoring(patient_id)
     except Exception as exc:
@@ -309,7 +479,12 @@ def my_monitoring(patient_id: str = Depends(auth.current_patient_id)):
     return {"patient_id": patient_id, "monitoring": data}
 
 
-@api.get("/me/note")
+@api.get(
+    "/me/note",
+    tags=["patient self-service"],
+    summary="The caller's own review note" + roles_note("patient"),
+    **guarded("patient"),
+)
 def my_note(patient_id: str = Depends(auth.current_patient_id)):
     """Read-only: a review note is written by a clinician, never by the patient."""
     try:
