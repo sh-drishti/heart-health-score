@@ -11,6 +11,7 @@ Follows backend/notes.py in importing the connection lazily, so an unreachable
 MONGODB_URI surfaces as a failing request rather than an import-time crash.
 """
 
+import secrets
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -130,6 +131,44 @@ def create_user(
 
 def list_users() -> List[Dict[str, Any]]:
     return [public_user(doc) for doc in _db()[USERS].find().sort("created_at", 1)]
+
+
+def _new_patient_id() -> str:
+    """
+    Mint an unused patient_id for a self-registering user.
+
+    Deliberately server-side: if a client could choose this, anyone could
+    register claiming an existing id and read that person's record, which would
+    defeat the whole point of resolving /me/* from the token.
+    """
+
+    users = _db()[USERS]
+    for _attempt in range(10):
+        candidate = f"HHS-U-{secrets.token_hex(4).upper()}"
+        # The users collection is the authority on which ids are claimed; the
+        # patients collection also holds clinician-created ids, so check both.
+        if users.find_one({"patient_id": candidate}) is None:
+            from database import patients_collection
+
+            if patients_collection.find_one({"patient_id": candidate}) is None:
+                return candidate
+
+    raise RuntimeError("Could not allocate a patient id; try again")
+
+
+def register_patient(email: str, password: str, name: str = "") -> Dict[str, Any]:
+    """
+    Self-registration. Always creates a `patient` account with a fresh
+    patient_id — never one the caller supplied.
+    """
+
+    return create_user(
+        email=email,
+        password=password,
+        role="patient",
+        name=name,
+        patient_id=_new_patient_id(),
+    )
 
 
 # --- Sessions ---------------------------------------------------------------

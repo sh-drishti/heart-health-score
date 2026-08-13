@@ -25,7 +25,16 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from backend import auth, intake, intake_schema, monitoring, notes, service, users
+from backend import (
+    auth,
+    intake,
+    intake_schema,
+    monitoring,
+    notes,
+    self_service,
+    service,
+    users,
+)
 
 
 @asynccontextmanager
@@ -128,9 +137,15 @@ app.add_middleware(
 
 Source = Query(default="csv", pattern="^(csv|payload)$")
 
-# Role shorthands. Staff run intake; clinicians review, so they can do both.
+# Role shorthands.
+#
+# A patient is a clinician scoped to one record: same 48-field form, same engine,
+# same dashboard — just their own data only. Staff exist to help someone through
+# the form, so they share the intake path. Hence AnyUser on the form schema and
+# on scoring, both of which read nothing and save nothing.
 Clinician = Depends(auth.require_role("clinician"))
 ClinicalUser = Depends(auth.require_role("clinician", "staff"))
+AnyUser = Depends(auth.require_role("clinician", "staff", "patient"))
 
 # The role a route needs is enforced by a dependency, which OpenAPI cannot see —
 # it only records that *some* security applies. Without this the docs would say
@@ -357,10 +372,10 @@ def read_monitoring(patient_id: str, _: Dict[str, Any] = Clinician):
 @api.get(
     "/intake/schema",
     tags=["intake"],
-    summary="Intake form field definitions" + roles_note("clinician", "staff"),
-    **guarded("clinician", "staff"),
+    summary="Intake form field definitions" + roles_note("clinician", "staff", "patient"),
+    **guarded("clinician", "staff", "patient"),
 )
-def intake_form_schema(_: Dict[str, Any] = ClinicalUser):
+def intake_form_schema(_: Dict[str, Any] = AnyUser):
     """
     48 fields with bounds, defaults, units and labels, derived from the engine's
     own metadata — so a client never hardcodes the form.
@@ -371,11 +386,17 @@ def intake_form_schema(_: Dict[str, Any] = ClinicalUser):
 @api.post(
     "/intake/score",
     tags=["intake"],
-    summary="Score a submission without saving" + roles_note("clinician", "staff"),
-    **guarded("clinician", "staff"),
+    summary="Score a submission without saving" + roles_note("clinician", "staff", "patient"),
+    **guarded("clinician", "staff", "patient"),
 )
-def intake_score(submission: SubmissionIn, _: Dict[str, Any] = ClinicalUser):
-    """Drives the live preview, so it is called on every edit. Writes nothing."""
+def intake_score(submission: SubmissionIn, _: Dict[str, Any] = AnyUser):
+    """
+    Drives the live preview, so it is called on every edit.
+
+    Open to patients because it reads nothing and saves nothing: the response is
+    derived purely from the numbers in the request, so there is no stored record
+    to leak whatever `patient_id` the body happens to carry.
+    """
     try:
         return {"assessment": intake.score(submission.to_submission())}
     except Exception as exc:
@@ -477,6 +498,66 @@ def my_monitoring(patient_id: str = Depends(auth.current_patient_id)):
         raise HTTPException(status_code=502, detail=str(exc))
 
     return {"patient_id": patient_id, "monitoring": data}
+
+
+@api.get(
+    "/me/intake/prefill",
+    tags=["patient self-service"],
+    summary="Last submission, ready to re-edit" + roles_note("patient"),
+    **guarded("patient"),
+)
+def my_prefill(patient_id: str = Depends(auth.current_patient_id)):
+    """
+    Starting point for a repeat visit, or `prefill: null` on a first visit.
+
+    `fields` is shaped exactly like the POST body. Every `months_old` is advanced
+    by the months since that visit, so a reused lab value keeps its real age and
+    `data_confidence` decays honestly instead of resetting to fresh.
+    """
+
+    try:
+        data = self_service.prefill(patient_id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "prefill": data}
+
+
+@api.post(
+    "/me/encounters",
+    tags=["patient self-service"],
+    summary="Record your own encounter" + roles_note("patient"),
+    **guarded("patient"),
+)
+def save_my_encounter(
+    submission: SubmissionIn,
+    user: Dict[str, Any] = Depends(auth.require_role("patient")),
+):
+    """
+    Score and save an encounter for the signed-in patient.
+
+    `visit.patient_id` and `visit.visit_id` in the request are ignored: the id
+    comes from the token and the visit id is generated, so a patient can neither
+    write to someone else's record nor overwrite one of their own past visits.
+    Repeat submissions append, which is what gives the trend charts a second
+    point — there is no in-place update.
+    """
+
+    patient_id = user.get("patient_id")
+    if not patient_id:
+        raise HTTPException(
+            status_code=403,
+            detail="This account is not linked to a patient record",
+        )
+
+    try:
+        return self_service.save_own_encounter(
+            patient_id,
+            submission.to_submission(),
+            user,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
 
 
 @api.get(

@@ -41,6 +41,17 @@ class RefreshIn(BaseModel):
     refresh_token: str
 
 
+class RegisterIn(BaseModel):
+    """
+    Self-registration. Note the absence of `role` and `patient_id`: this always
+    creates a patient, with an id the server allocates.
+    """
+
+    email: str
+    password: str = Field(min_length=8)
+    name: str = ""
+
+
 class CreateUserIn(BaseModel):
     email: str
     password: str = Field(min_length=8)
@@ -183,6 +194,39 @@ def login(body: LoginIn):
         )
 
     return _session(user)
+
+
+@router.post(
+    "/auth/register",
+    status_code=status.HTTP_201_CREATED,
+    summary="Create your own patient account",
+    responses={
+        409: {"description": "An account already exists for that email."},
+        422: {"description": "Invalid email or password shorter than 8 characters."},
+    },
+)
+def register(body: RegisterIn):
+    """
+    Open sign-up for someone assessing their own heart health. Returns a signed-in
+    session, so the client does not have to log in again straight away.
+
+    The role is always `patient` and the `patient_id` is allocated server-side —
+    neither can be influenced by the request, or a caller could claim somebody
+    else's record.
+    """
+
+    try:
+        created = users.register_patient(
+            email=body.email,
+            password=body.password,
+            name=body.name,
+        )
+    except users.EmailTaken as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    return _session(created)
 
 
 @router.post(
