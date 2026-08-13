@@ -121,6 +121,33 @@ export interface MonitoringData {
   insights: TrendInsights
 }
 
+// --- Auth -------------------------------------------------------------------
+
+/**
+ * clinician: review any patient, write notes, run intake, manage accounts.
+ * staff:     intake only.
+ * patient:   own record only, via /me/* — never by patient_id in a URL.
+ */
+export type Role = 'clinician' | 'staff' | 'patient'
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: Role
+  /** Set only for patient accounts; the record /me/* resolves to. */
+  patient_id: string | null
+}
+
+export interface TokenPair {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  /** Access-token lifetime in seconds. */
+  expires_in: number
+  user: AuthUser
+}
+
 // --- Intake form ------------------------------------------------------------
 
 export type Availability = 'Available' | 'Unknown' | 'Not measured'

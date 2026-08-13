@@ -6,10 +6,13 @@ FastAPI wrapper around the existing Python HHS engine. No scoring logic lives he
 
 | File | Purpose |
 |---|---|
-| `main.py` | FastAPI app: CORS, route definitions, request models. Puts repo root on `sys.path` so shared modules import. |
+| `main.py` | FastAPI app: CORS, route definitions, request models, role guards. Puts repo root on `sys.path` so shared modules import. |
+| `security.py` | Password hashing and token minting. Pure — no database, no FastAPI. Refuses to import without `JWT_SECRET`. |
+| `users.py` | The `users` and `refresh_tokens` collections. The only collections this API owns; the rest keep their existing owners. |
+| `auth.py` | `/auth/*` routes plus the dependencies every other route is guarded by (`current_user`, `require_role`, `current_patient_id`). |
 | `service.py` | Dashboard bundle builder. Loads patient (CSV or MongoDB), runs `calculate_hhs` + `calculate_patient_severity`, sanitizes to JSON-safe output. Also holds the in-memory validation store. |
 | `payload_convert.py` | MongoDB encounter payload → patient dict. Own copy of `payload_adapter.py` logic (original has import-time side effects, so it is not imported). Returns plain dicts for clean serialization. |
-| `requirements.txt` | `fastapi`, `uvicorn[standard]` — extra deps on top of the repo's root `requirements.txt`. |
+| `requirements.txt` | `fastapi`, `uvicorn[standard]`, `pyjwt`, `bcrypt` — extra deps on top of the repo's root `requirements.txt`. |
 
 ## Shared modules reused (read-only, never modified)
 
@@ -30,14 +33,49 @@ uvicorn backend.main:app --reload --port 8000
 
 Swagger UI: http://localhost:8000/docs
 
+## Authentication
+
+Every route except `GET /api/health` requires `Authorization: Bearer <access_token>`.
+
+Roles: **clinician** (review any patient, notes, intake, manage accounts), **staff** (intake only), **patient** (`/me/*` only, resolved from the token — never from a `patient_id` in the URL).
+
+Accounts are not self-serve. Create the first clinician from the repo root:
+
+```bash
+python seed_users.py --email you@example.com --role clinician --name "Dr Rao"
+python seed_users.py --list
+```
+
+After that a clinician can create accounts with `POST /api/v1/auth/users`. `JWT_SECRET` must be set in `.env` — see `.env.example`; the app refuses to start without it.
+
+Access tokens are short-lived (`ACCESS_TOKEN_TTL_MIN`, default 30). Refresh tokens are opaque, stored only as a SHA-256 hash, and **rotate on every use** — redeeming one revokes it, so a replay returns 401.
+
 ## Endpoints
 
-| Method | Path | Query | Description |
+All routes are under `/api/v1`. `/api/health` is the only exception.
+
+| Method | Path | Role | Description |
 |---|---|---|---|
-| GET | `/api/health` | — | `{"status": "ok"}` |
-| GET | `/api/patients` | `source=csv\|payload` | `{"patient_ids": [...]}` |
-| GET | `/api/patients/{patient_id}` | `source=csv\|payload` | Dashboard bundle (see below) |
-| POST | `/api/validation` | — | Save doctor validation (in-memory, lost on restart) |
+| GET | `/api/health` | — | `{"status": "ok"}`, unauthenticated |
+| POST | `/api/v1/auth/login` | — | `{email, password}` → access + refresh token and the user |
+| POST | `/api/v1/auth/refresh` | — | `{refresh_token}` → a new pair; the presented token is revoked |
+| POST | `/api/v1/auth/logout` | — | Revoke one session |
+| POST | `/api/v1/auth/logout-all` | any | Revoke every session for the caller |
+| GET | `/api/v1/auth/me` | any | The signed-in account |
+| GET | `/api/v1/auth/users` | clinician | List accounts |
+| POST | `/api/v1/auth/users` | clinician | Create an account; `409` if the email is taken |
+| GET | `/api/v1/patients` | clinician, staff | `{"patient_ids": [...]}`, `source=csv\|payload` |
+| GET | `/api/v1/patients/{patient_id}` | clinician | Dashboard bundle (see below), `source=csv\|payload` |
+| POST | `/api/v1/validation` | clinician | Save doctor validation (in-memory, lost on restart) |
+| GET | `/api/v1/patients/{id}/note` | clinician | Saved review note; `note` is `null` when none exists |
+| PUT | `/api/v1/patients/{id}/note` | clinician | Save the review note `{note}`; the author is the signed-in account |
+| GET | `/api/v1/patients/{id}/monitoring` | clinician | Trend history; `monitoring` is `null` with no saved encounters |
+| GET | `/api/v1/intake/schema` | clinician, staff | Intake form definitions |
+| POST | `/api/v1/intake/score` | clinician, staff | Score without saving — drives the live preview |
+| POST | `/api/v1/intake/encounters` | clinician, staff | Score + persist; `409` if `visit_id` exists. Blank `reviewed_by` is filled from the token |
+| GET | `/api/v1/me/dashboard` | patient | Own dashboard bundle |
+| GET | `/api/v1/me/monitoring` | patient | Own trend history |
+| GET | `/api/v1/me/note` | patient | Own review note, read-only |
 
 ### Dashboard bundle response
 

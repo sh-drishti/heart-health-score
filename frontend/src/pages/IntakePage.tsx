@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AlertTriangle, CheckCircle2, Loader2, Save } from 'lucide-react'
+import { useAuth } from '@/auth/AuthContext'
 
 const VISIT_TAB = 'visit'
 const SAVE_TAB = 'save'
@@ -39,7 +40,7 @@ function today(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
-function initialVisit(fields: FieldDef[]): VisitInfo {
+function initialVisit(fields: FieldDef[], reviewer: string): VisitInfo {
   const byKey = Object.fromEntries(fields.map((f) => [f.key, f]))
   const str = (k: string) => String(byKey[k]?.default ?? '')
   return {
@@ -50,7 +51,10 @@ function initialVisit(fields: FieldDef[]): VisitInfo {
     biological_sex: str('biological_sex'),
     region_profile: str('region_profile'),
     clinical_setting: str('clinical_setting'),
-    reviewed_by: str('reviewed_by'),
+    // The signed-in account, not the schema's generic placeholder. Left blank
+    // the API stamps the account anyway; prefilling just makes what will be
+    // recorded visible, and still editable when someone else did the review.
+    reviewed_by: reviewer,
   }
 }
 
@@ -80,6 +84,9 @@ export function IntakePage() {
   const [schema, setSchema] = useState<IntakeSchema | null>(null)
   const [schemaErr, setSchemaErr] = useState<string | null>(null)
 
+  const { user } = useAuth()
+  const reviewer = user?.name || user?.email || ''
+
   const [visit, setVisit] = useState<VisitInfo | null>(null)
   const [patientProfile, setPatientProfile] = useState<PatientProfile>(initialPatientProfile)
   const [entries, setEntries] = useState<Record<string, FieldEntry>>({})
@@ -100,11 +107,11 @@ export function IntakePage() {
     fetchIntakeSchema()
       .then((s) => {
         setSchema(s)
-        setVisit(initialVisit(s.visit_fields))
+        setVisit(initialVisit(s.visit_fields, reviewer))
         setNote(s.clinician_note_default)
       })
       .catch((e) => setSchemaErr(String(e)))
-  }, [])
+  }, [reviewer])
 
   const submission: Submission | null = useMemo(() => {
     if (!visit) return null
