@@ -44,6 +44,7 @@ export function RequireAuth({
 
 /** Where a role belongs, so this screen can offer a way out rather than a dead end. */
 const HOME: Record<Role, string> = {
+  admin: '/admin',
   clinician: '/dashboard',
   staff: '/entry',
   patient: '/my-health',

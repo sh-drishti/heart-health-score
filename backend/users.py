@@ -24,7 +24,10 @@ from backend.security import hash_password, hash_refresh_token, refresh_expiry
 USERS = "users"
 REFRESH_TOKENS = "refresh_tokens"
 
-ROLES = ("clinician", "staff", "patient")
+# admin manages accounts and nothing clinical: least privilege in both
+# directions, so an account administrator cannot read patient records and a
+# clinician cannot grant themselves or anyone else access.
+ROLES = ("admin", "clinician", "staff", "patient")
 
 
 class EmailTaken(Exception):
@@ -59,12 +62,15 @@ def ensure_indexes() -> None:
 def public_user(doc: Dict[str, Any]) -> Dict[str, Any]:
     """Account fields safe to return over HTTP. Never includes the hash."""
 
+    created = doc.get("created_at")
     return {
         "id": str(doc["_id"]),
         "email": doc["email"],
         "name": doc.get("name", ""),
         "role": doc["role"],
         "patient_id": doc.get("patient_id"),
+        "active": bool(doc.get("active", True)),
+        "created_at": created.isoformat() if isinstance(created, datetime) else None,
     }
 
 
@@ -131,6 +137,56 @@ def create_user(
 
 def list_users() -> List[Dict[str, Any]]:
     return [public_user(doc) for doc in _db()[USERS].find().sort("created_at", 1)]
+
+
+def count_active_admins() -> int:
+    return _db()[USERS].count_documents({"role": "admin", "active": True})
+
+
+def set_active(user_id: str, active: bool) -> Optional[Dict[str, Any]]:
+    """
+    Enable or disable an account. Returns the updated account, or None if it
+    does not exist.
+
+    Deactivating takes effect on the next request, not when the access token
+    expires, because current_user re-reads the account every time. Live sessions
+    are revoked too so a refresh cannot resurrect one.
+    """
+
+    user = get_by_id(user_id)
+    if user is None:
+        return None
+
+    _db()[USERS].update_one({"_id": user["_id"]}, {"$set": {"active": active}})
+    if not active:
+        revoke_all(user["_id"])
+
+    user["active"] = active
+    return user
+
+
+def set_password(user_id: str, password: str) -> Optional[Dict[str, Any]]:
+    """
+    Replace an account's password and end its sessions.
+
+    There is no self-service reset, so this is how a forgotten password is
+    recovered. Revoking sessions is the point: whoever knew the old password
+    should not keep a working session.
+    """
+
+    if len(password) < 8:
+        raise ValueError("Password must be at least 8 characters")
+
+    user = get_by_id(user_id)
+    if user is None:
+        return None
+
+    _db()[USERS].update_one(
+        {"_id": user["_id"]},
+        {"$set": {"password_hash": hash_password(password)}},
+    )
+    revoke_all(user["_id"])
+    return user
 
 
 def _new_patient_id() -> str:

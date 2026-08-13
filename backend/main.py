@@ -73,9 +73,14 @@ Each endpoint's summary ends with the roles that may call it.
 
 | Role | Can do |
 |---|---|
-| `clinician` | Review any patient, write notes and validations, run intake, manage accounts |
-| `staff` | Intake only, plus listing patient ids to check for duplicates |
-| `patient` | Own record only, through `/me/*` |
+| `admin` | Issue accounts, reset passwords, disable access. **No** patient data |
+| `clinician` | Review any patient, write notes and validations, run intake |
+| `staff` | Intake on someone's behalf, plus listing patient ids to check for duplicates |
+| `patient` | Own record only, through `/me/*` — including recording their own visits |
+
+The admin split runs both ways: an account administrator cannot read clinical
+data, and a clinician cannot grant anyone access. Patients self-register at
+`POST /auth/register`, so admins only issue the roles that are handed out.
 
 A `patient` token on `/patients/{id}` returns **403** by design: patient clients
 resolve their record from the token, never from the URL, so no patient can reach

@@ -124,11 +124,12 @@ export interface MonitoringData {
 // --- Auth -------------------------------------------------------------------
 
 /**
- * clinician: review any patient, write notes, run intake, manage accounts.
- * staff:     intake only.
+ * admin:     accounts only — deliberately no access to clinical data.
+ * clinician: review any patient, write notes, run intake.
+ * staff:     intake only, on someone else's behalf.
  * patient:   own record only, via /me/* — never by patient_id in a URL.
  */
-export type Role = 'clinician' | 'staff' | 'patient'
+export type Role = 'admin' | 'clinician' | 'staff' | 'patient'
 
 export interface AuthUser {
   id: string
@@ -137,6 +138,8 @@ export interface AuthUser {
   role: Role
   /** Set only for patient accounts; the record /me/* resolves to. */
   patient_id: string | null
+  active: boolean
+  created_at: string | null
 }
 
 /**

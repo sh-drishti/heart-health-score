@@ -10,6 +10,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
 
 /** Where a role lands after signing in. */
 const HOME: Record<string, string> = {
+  admin: '/admin',
   clinician: '/dashboard',
   staff: '/entry',
   patient: '/my-health',

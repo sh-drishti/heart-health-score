@@ -60,6 +60,16 @@ class CreateUserIn(BaseModel):
     patient_id: Optional[str] = None
 
 
+class UpdateUserIn(BaseModel):
+    """Only `active` is editable. Role and email changes are out of scope."""
+
+    active: bool
+
+
+class SetPasswordIn(BaseModel):
+    password: str = Field(min_length=8)
+
+
 def _session(user: Dict[str, Any]) -> Dict[str, Any]:
     """Issue a fresh token pair for a user and record the refresh side."""
 
@@ -288,33 +298,37 @@ def logout_all(user: Dict[str, Any] = Depends(current_user)):
     return {"status": "ok", "sessions_revoked": revoked}
 
 
+# --- Account administration -------------------------------------------------
+#
+# Admin only. Clinicians deliberately cannot reach these: being able to read
+# patient records should not also mean being able to grant that access.
+
+UNAUTHORIZED = {"description": "Missing, malformed, or expired access token."}
+ADMIN_ONLY = {"description": "Requires: admin."}
+Admin = Depends(require_role("admin"))
+
+
 @router.get(
     "/auth/users",
-    summary="List accounts [clinician]",
-    responses={
-        401: {"description": "Missing, malformed, or expired access token."},
-        403: {"description": "Requires: clinician."},
-    },
+    summary="List accounts [admin]",
+    responses={401: UNAUTHORIZED, 403: ADMIN_ONLY},
 )
-def list_accounts(_: Dict[str, Any] = Depends(require_role("clinician"))):
+def list_accounts(_: Dict[str, Any] = Admin):
     return {"users": users.list_users()}
 
 
 @router.post(
     "/auth/users",
     status_code=status.HTTP_201_CREATED,
-    summary="Create an account [clinician]",
+    summary="Create an account [admin]",
     responses={
-        401: {"description": "Missing, malformed, or expired access token."},
-        403: {"description": "Requires: clinician."},
+        401: UNAUTHORIZED,
+        403: ADMIN_ONLY,
         409: {"description": "An account already exists for that email."},
         422: {"description": "Invalid role, email, password length, or patient_id linkage."},
     },
 )
-def create_account(
-    body: CreateUserIn,
-    _: Dict[str, Any] = Depends(require_role("clinician")),
-):
+def create_account(body: CreateUserIn, _: Dict[str, Any] = Admin):
     try:
         created = users.create_user(
             email=body.email,
@@ -329,3 +343,76 @@ def create_account(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
 
     return {"user": users.public_user(created)}
+
+
+@router.patch(
+    "/auth/users/{user_id}",
+    summary="Enable or disable an account [admin]",
+    responses={
+        401: UNAUTHORIZED,
+        403: ADMIN_ONLY,
+        404: {"description": "No such account."},
+        409: {"description": "Would lock everyone out: cannot disable yourself or the last admin."},
+    },
+)
+def update_account(
+    user_id: str,
+    body: UpdateUserIn,
+    admin: Dict[str, Any] = Admin,
+):
+    """
+    Disabling revokes the account's live sessions as well, so access stops
+    immediately rather than when its access token happens to expire.
+    """
+
+    target = users.get_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such account")
+
+    if not body.active:
+        # Two ways to lock the whole system out of account management, both
+        # easy to do by accident and impossible to undo through the API.
+        if str(target["_id"]) == str(admin["_id"]):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="You cannot disable your own account",
+            )
+        if target["role"] == "admin" and users.count_active_admins() <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This is the last active admin; promote another before disabling it",
+            )
+
+    updated = users.set_active(user_id, body.active)
+    return {"user": users.public_user(updated)}
+
+
+@router.post(
+    "/auth/users/{user_id}/password",
+    summary="Set an account's password [admin]",
+    responses={
+        401: UNAUTHORIZED,
+        403: ADMIN_ONLY,
+        404: {"description": "No such account."},
+        422: {"description": "Password shorter than 8 characters."},
+    },
+)
+def set_account_password(
+    user_id: str,
+    body: SetPasswordIn,
+    _: Dict[str, Any] = Admin,
+):
+    """
+    How a forgotten password is recovered, since there is no self-service reset.
+    Ends every session the account had.
+    """
+
+    try:
+        updated = users.set_password(user_id, body.password)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
+
+    if updated is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such account")
+
+    return {"status": "ok", "user": users.public_user(updated)}

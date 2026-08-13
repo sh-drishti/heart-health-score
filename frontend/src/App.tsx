@@ -7,6 +7,7 @@ import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
+import { AdminPage } from '@/pages/AdminPage'
 import { MyHealthPage } from '@/pages/MyHealthPage'
 import { IntakePage } from '@/pages/IntakePage'
 import { useAuth } from '@/auth/AuthContext'
@@ -46,6 +47,14 @@ function App() {
             element={
               <RequireAuth roles={['clinician']}>
                 <DashboardPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <RequireAuth roles={['admin']}>
+                <AdminPage />
               </RequireAuth>
             }
           />

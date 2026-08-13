@@ -37,16 +37,18 @@ Swagger UI: http://localhost:8000/docs
 
 Every route except `GET /api/health` requires `Authorization: Bearer <access_token>`.
 
-Roles: **clinician** (review any patient, notes, intake, manage accounts), **staff** (intake only), **patient** (`/me/*` only, resolved from the token — never from a `patient_id` in the URL).
+Roles: **admin** (accounts only, no clinical data), **clinician** (review any patient, notes, intake), **staff** (intake on someone's behalf), **patient** (`/me/*` only, resolved from the token — never from a `patient_id` in the URL, and including recording their own visits).
 
-Accounts are not self-serve. Create the first clinician from the repo root:
+The admin split runs both ways: an account administrator cannot read clinical data, and a clinician cannot grant access to it.
+
+Patients self-register at `POST /api/v1/auth/register`. The other roles are issued by an admin, so create the first admin from the repo root — account administration cannot bootstrap itself:
 
 ```bash
-python seed_users.py --email you@example.com --role clinician --name "Dr Rao"
+python seed_users.py --email you@example.com --role admin --name "Your Name"
 python seed_users.py --list
 ```
 
-After that a clinician can create accounts with `POST /api/v1/auth/users`. `JWT_SECRET` must be set in `.env` — see `.env.example`; the app refuses to start without it.
+After that an admin manages accounts at `/admin` in the web app, or via `POST /api/v1/auth/users`. `JWT_SECRET` must be set in `.env` — see `.env.example`; the app refuses to start without it.
 
 Access tokens are short-lived (`ACCESS_TOKEN_TTL_MIN`, default 30). Refresh tokens are opaque, stored only as a SHA-256 hash, and **rotate on every use** — redeeming one revokes it, so a replay returns 401.
 
@@ -62,20 +64,25 @@ All routes are under `/api/v1`. `/api/health` is the only exception.
 | POST | `/api/v1/auth/logout` | — | Revoke one session |
 | POST | `/api/v1/auth/logout-all` | any | Revoke every session for the caller |
 | GET | `/api/v1/auth/me` | any | The signed-in account |
-| GET | `/api/v1/auth/users` | clinician | List accounts |
-| POST | `/api/v1/auth/users` | clinician | Create an account; `409` if the email is taken |
+| POST | `/api/v1/auth/register` | — | Open sign-up; always a patient, `patient_id` issued server-side |
+| GET | `/api/v1/auth/users` | admin | List accounts |
+| POST | `/api/v1/auth/users` | admin | Create an account; `409` if the email is taken |
+| PATCH | `/api/v1/auth/users/{id}` | admin | Enable or disable; disabling revokes its sessions. `409` on the last admin or yourself |
+| POST | `/api/v1/auth/users/{id}/password` | admin | Set a password and end that account's sessions |
 | GET | `/api/v1/patients` | clinician, staff | `{"patient_ids": [...]}`, `source=csv\|payload` |
 | GET | `/api/v1/patients/{patient_id}` | clinician | Dashboard bundle (see below), `source=csv\|payload` |
 | POST | `/api/v1/validation` | clinician | Save doctor validation (in-memory, lost on restart) |
 | GET | `/api/v1/patients/{id}/note` | clinician | Saved review note; `note` is `null` when none exists |
 | PUT | `/api/v1/patients/{id}/note` | clinician | Save the review note `{note}`; the author is the signed-in account |
 | GET | `/api/v1/patients/{id}/monitoring` | clinician | Trend history; `monitoring` is `null` with no saved encounters |
-| GET | `/api/v1/intake/schema` | clinician, staff | Intake form definitions |
-| POST | `/api/v1/intake/score` | clinician, staff | Score without saving — drives the live preview |
-| POST | `/api/v1/intake/encounters` | clinician, staff | Score + persist; `409` if `visit_id` exists. Blank `reviewed_by` is filled from the token |
+| GET | `/api/v1/intake/schema` | clinician, staff, patient | Intake form definitions |
+| POST | `/api/v1/intake/score` | clinician, staff, patient | Score without saving — drives the live preview. Reads and writes nothing |
+| POST | `/api/v1/intake/encounters` | clinician, staff | Score + persist for a named patient; `409` if `visit_id` exists. Blank `reviewed_by` is filled from the token |
 | GET | `/api/v1/me/dashboard` | patient | Own dashboard bundle |
 | GET | `/api/v1/me/monitoring` | patient | Own trend history |
 | GET | `/api/v1/me/note` | patient | Own review note, read-only |
+| GET | `/api/v1/me/intake/prefill` | patient | Last submission with measurement ages advanced, for a repeat visit. `null` on a first visit |
+| POST | `/api/v1/me/encounters` | patient | Record own encounter; `patient_id` and `visit_id` in the body are ignored and assigned server-side |
 
 ### Dashboard bundle response
 

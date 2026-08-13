@@ -3,6 +3,7 @@ import { useAuth } from '@/auth/AuthContext'
 import { Button } from '@/components/ui/button'
 
 const ROLE_LABEL: Record<string, string> = {
+  admin: 'Admin',
   clinician: 'Clinician',
   staff: 'Intake staff',
   patient: 'Patient',

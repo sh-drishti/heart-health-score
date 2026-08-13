@@ -18,6 +18,7 @@ import type {
   IntakePrefill,
   IntakeSchema,
   MonitoringData,
+  Role,
   SavedNote,
   SaveResult,
   Source,
@@ -141,6 +142,56 @@ export const logout = endSession
 export async function fetchMe(): Promise<AuthUser> {
   const data = await json<{ user: AuthUser }>('/auth/me', { label: 'me' })
   return data.user
+}
+
+// --- Account administration (admin only) ------------------------------------
+
+export async function fetchAccounts(): Promise<AuthUser[]> {
+  const data = await json<{ users: AuthUser[] }>('/auth/users', { label: 'accounts' })
+  return data.users
+}
+
+export interface NewAccount {
+  email: string
+  password: string
+  role: Role
+  name: string
+  /** Required for a patient account, rejected for any other role. */
+  patient_id?: string | null
+}
+
+export async function createAccount(account: NewAccount): Promise<AuthUser> {
+  const data = await json<{ user: AuthUser }>('/auth/users', {
+    method: 'POST',
+    body: account,
+    label: 'create account',
+  })
+  return data.user
+}
+
+/** Disabling also revokes the account's live sessions, so access stops at once. */
+export async function setAccountActive(
+  userId: string,
+  active: boolean,
+): Promise<AuthUser> {
+  const data = await json<{ user: AuthUser }>(`/auth/users/${encodeURIComponent(userId)}`, {
+    method: 'PATCH',
+    body: { active },
+    label: 'update account',
+  })
+  return data.user
+}
+
+/** How a forgotten password is recovered — there is no self-service reset. */
+export async function setAccountPassword(
+  userId: string,
+  password: string,
+): Promise<void> {
+  await json(`/auth/users/${encodeURIComponent(userId)}/password`, {
+    method: 'POST',
+    body: { password },
+    label: 'set password',
+  })
 }
 
 // --- Patients ---------------------------------------------------------------

@@ -1,5 +1,12 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, ClipboardPlus, HeartPulse, Lock, Stethoscope } from 'lucide-react'
+import {
+  ArrowRight,
+  ClipboardPlus,
+  HeartPulse,
+  Lock,
+  ShieldCheck,
+  Stethoscope,
+} from 'lucide-react'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { UserMenu } from '@/components/UserMenu'
 import { useAuth } from '@/auth/AuthContext'
@@ -43,6 +50,15 @@ const VIEWS: Array<{
     action: 'Start an encounter',
     roles: ['clinician', 'staff'],
   },
+  {
+    to: '/admin',
+    icon: ShieldCheck,
+    title: 'Account Administration',
+    role: 'For admins',
+    body: 'Issue clinician, staff and admin accounts, reset a forgotten password, and disable access. No patient data.',
+    action: 'Manage accounts',
+    roles: ['admin'],
+  },
 ]
 
 export function LandingPage() {
@@ -83,7 +99,11 @@ export function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {VIEWS.map((view) => {
+            {VIEWS.filter(
+              // Not advertised to the public: an admin knows to sign in, and a
+              // visitor has no use for it.
+              (view) => !view.roles.includes('admin') || user?.role === 'admin',
+            ).map((view) => {
               // Signed out, the card leads to sign-in and returns here after.
               // Signed in without the role, it is shown but not offered.
               const permitted = user === null || view.roles.includes(user.role)
