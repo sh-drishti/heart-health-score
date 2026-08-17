@@ -121,6 +121,56 @@ export interface MonitoringData {
   insights: TrendInsights
 }
 
+// --- Auth -------------------------------------------------------------------
+
+/**
+ * admin:     accounts only — deliberately no access to clinical data.
+ * clinician: review any patient, write notes, run intake.
+ * staff:     intake only, on someone else's behalf.
+ * patient:   own record only, via /me/* — never by patient_id in a URL.
+ */
+export type Role = 'admin' | 'clinician' | 'staff' | 'patient'
+
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: Role
+  /** Set only for patient accounts; the record /me/* resolves to. */
+  patient_id: string | null
+  active: boolean
+  created_at: string | null
+}
+
+/**
+ * A returning patient's last submission, ready to re-edit.
+ *
+ * `months_old` on every numeric field has already been advanced by
+ * `months_since_last_visit`, so reused measurements keep their real age and
+ * data confidence decays honestly.
+ */
+export interface IntakePrefill {
+  from_visit_id: string
+  months_since_last_visit: number
+  visit: {
+    age: number
+    biological_sex: string
+    region_profile: string
+    clinical_setting: string
+  }
+  fields: Record<string, FieldEntry>
+  lpa_unit: string
+}
+
+export interface TokenPair {
+  access_token: string
+  refresh_token: string
+  token_type: string
+  /** Access-token lifetime in seconds. */
+  expires_in: number
+  user: AuthUser
+}
+
 // --- Intake form ------------------------------------------------------------
 
 export type Availability = 'Available' | 'Unknown' | 'Not measured'

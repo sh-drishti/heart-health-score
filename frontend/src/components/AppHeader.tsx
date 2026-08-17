@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { HeartPulse } from 'lucide-react'
 import { ThemeToggle } from './ThemeToggle'
+import { UserMenu } from './UserMenu'
 
 interface Props {
   /** Names the role-specific view, e.g. "Clinical Dashboard" or "Data Entry". */
@@ -31,6 +32,7 @@ export function AppHeader({ subtitle, right }: Props) {
 
         <div className="flex items-center gap-2 shrink-0">
           {right}
+          <UserMenu />
           <ThemeToggle />
         </div>
       </div>

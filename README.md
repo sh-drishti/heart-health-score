@@ -102,19 +102,66 @@ Switch in the dashboard header dropdown:
 - **CSV (internal)** — reads `data/cardio_hhs_2.csv` (101 synthetic patients)
 - **MongoDB payload** — reads encounter payloads via `EncounterRepository` (requires `.env`)
 
+## Authentication
+
+The API requires a bearer token on every route except `GET /api/health`, and the
+web app requires a sign-in. Set `JWT_SECRET` in `.env` (see `.env.example`) — the
+service refuses to start without it — then create the first admin, since account
+administration is the one thing that cannot bootstrap itself:
+
+```bash
+python seed_users.py --email you@example.com --role admin --name "Your Name"
+python seed_users.py --list
+```
+
+Roles:
+
+| Role | Can do | Comes from |
+|---|---|---|
+| `admin` | Issue accounts, reset passwords, disable access. **No** patient data | `seed_users.py`, then `/admin` in the app |
+| `clinician` | Review any patient, notes, validations, intake | An admin |
+| `staff` | Intake on someone's behalf | An admin |
+| `patient` | Own record only, including recording their own visits | Self-registration at `/register` |
+
+People assessing their own heart health **sign up themselves** at `/register`;
+the `patient_id` is issued server-side, never accepted from the request, so no
+account can claim someone else's record. Patient reads and writes go through
+`/api/v1/me/*`, which resolves the record from the token rather than the URL.
+
+The admin split runs both ways: an account administrator cannot read clinical
+data, and a clinician cannot grant access to it.
+
+The same bearer flow serves the web app and a native client, which is why tokens
+are used rather than cookies. Refresh tokens rotate on every use.
+
 ## API Reference
+
+All routes live under `/api/v1`; `/api/health` is the only exception. Roles in
+brackets.
 
 | Endpoint | Description |
 |---|---|
-| `GET /api/health` | Health check |
-| `GET /api/patients?source=csv\|payload` | List patient IDs |
-| `GET /api/patients/{id}?source=csv\|payload` | Full dashboard bundle: `{patient, patient_data, assessment}` |
-| `POST /api/validation` | Save doctor validation `{patient_id, agreement, calculated_hhs, doctor_hhs, reason}` (in-memory) |
-| `GET /api/patients/{id}/note` | Saved clinical review note; `note` is `null` when none exists |
-| `PUT /api/patients/{id}/note` | Save (upsert) the review note `{note, author}` → MongoDB |
-| `GET /api/intake/schema` | Intake form definitions: 48 fields with bounds, defaults, units, labels |
-| `POST /api/intake/score` | Score a submission without saving — drives the live preview |
-| `POST /api/intake/encounters` | Score + persist an encounter to MongoDB. `409` if `visit_id` already exists |
+| `GET /api/health` | Health check, unauthenticated |
+| `POST /api/v1/auth/login` | `{email, password}` → access + refresh token and the user |
+| `POST /api/v1/auth/refresh` | `{refresh_token}` → a new pair; the presented one is revoked |
+| `POST /api/v1/auth/logout` · `logout-all` | Revoke one session · every session |
+| `GET /api/v1/auth/me` | The signed-in account |
+| `POST /api/v1/auth/register` | Open sign-up; always a patient, with a server-issued `patient_id` |
+| `GET` · `POST /api/v1/auth/users` | List · create accounts *[admin]* |
+| `PATCH /api/v1/auth/users/{id}` | Enable or disable an account; disabling revokes its sessions *[admin]* |
+| `POST /api/v1/auth/users/{id}/password` | Set a password and end that account's sessions *[admin]* |
+| `GET /api/v1/patients?source=csv\|payload` | List patient IDs *[clinician, staff]* |
+| `GET /api/v1/patients/{id}?source=csv\|payload` | Full dashboard bundle: `{patient, patient_data, assessment}` *[clinician]* |
+| `POST /api/v1/validation` | Save doctor validation `{patient_id, agreement, calculated_hhs, doctor_hhs, reason}` (in-memory) *[clinician]* |
+| `GET /api/v1/patients/{id}/note` | Saved clinical review note; `note` is `null` when none exists *[clinician]* |
+| `PUT /api/v1/patients/{id}/note` | Save (upsert) the review note `{note}`; the author is the signed-in account *[clinician]* |
+| `GET /api/v1/patients/{id}/monitoring` | Trend history; `monitoring` is `null` with no saved encounters *[clinician]* |
+| `GET /api/v1/intake/schema` | Intake form definitions: 48 fields with bounds, defaults, units, labels *[clinician, staff]* |
+| `POST /api/v1/intake/score` | Score a submission without saving — drives the live preview *[clinician, staff]* |
+| `POST /api/v1/intake/encounters` | Score + persist an encounter to MongoDB. `409` if `visit_id` already exists *[clinician, staff]* |
+| `GET /api/v1/me/dashboard` · `me/monitoring` · `me/note` | The caller's own record *[patient]* |
+| `GET /api/v1/me/intake/prefill` | Last submission, measurement ages advanced, for a repeat visit *[patient]* |
+| `POST /api/v1/me/encounters` | Record your own encounter; ids assigned server-side *[patient]* |
 
 Interactive docs: http://localhost:8000/docs (FastAPI Swagger UI)
 
