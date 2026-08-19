@@ -1,0 +1,20 @@
+# Keep the build context small. The venv alone is ~834MB and must never be
+# copied into an image — the container installs its own dependencies.
+venv
+backend/venv
+.venv
+__pycache__
+**/__pycache__
+*.pyc
+
+node_modules
+frontend/node_modules
+frontend/dist
+
+.git
+
+# Secrets are supplied at run time via env_file, never baked into a layer.
+.env
+
+.claude
+.agents

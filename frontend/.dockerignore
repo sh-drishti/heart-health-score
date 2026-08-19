@@ -1,0 +1,6 @@
+# The frontend build context is frontend/, so the root .dockerignore does not
+# apply here.
+node_modules
+dist
+.env
+.env.local
