@@ -1,0 +1,30 @@
+# Local and single-box deployment: the API plus nginx serving the built
+# frontend and proxying /api to it.
+#
+#   docker compose up -d --build
+#   docker compose logs -f
+#
+# On EC2, set WEB_PORT=80 in .env.
+
+services:
+  api:
+    build: .
+    # MONGODB_URI, DATABASE_NAME, JWT_SECRET and the TTLs. The API refuses to
+    # start without JWT_SECRET, by design.
+    env_file: .env
+    restart: unless-stopped
+    # Not published: nginx is the only thing that talks to it. Publishing 8000
+    # would expose the API bypassing nginx, and later bypassing TLS.
+    expose:
+      - "8000"
+
+  web:
+    build: ./frontend
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    # Wait for the API healthcheck, or the first requests through the proxy
+    # fail while pandas is still importing.
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped

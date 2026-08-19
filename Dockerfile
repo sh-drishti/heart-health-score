@@ -1,0 +1,57 @@
+# The HHS API. Scores against the existing Python engine in the repo root.
+#
+# Build from the repo root, since the engine modules and data/ live there:
+#   docker compose build api
+#
+# Python 3.14 to match what the dependency pins were tested against.
+FROM python:3.14-slim
+
+# WORKDIR must be the repo root: severity.py reads
+# data/feature_mapping_hhs_2.xlsx at import time via a RELATIVE path, so the
+# process will not start from anywhere else.
+WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
+# Dependencies first, in their own layer, so code edits do not reinstall pandas.
+COPY backend/requirements.txt backend/requirements.txt
+RUN pip install --no-cache-dir -r backend/requirements.txt
+
+# The engine modules, which live in the repo root. `import backend.main` needs
+# exactly seven of them — adapter, assessment_service, database,
+# hhs_v1_2_ui_app, mapping, notification, severity — but we copy all the root
+# modules rather than listing those seven, so that adding a new import later
+# does not break the container at startup.
+#
+# The extras (app.py, tab2.py, ...) are a few KB and inert: they are Streamlit
+# code, streamlit is not installed here, and no route serves them. Nothing runs
+# in this image except the uvicorn process in CMD.
+#
+# seed_users.py comes along for bootstrapping the first admin:
+#   docker compose exec api python seed_users.py --email ... --role admin
+COPY *.py ./
+
+# Referenced at import time by severity.py, and by the CSV patient source.
+COPY data/ data/
+
+COPY backend/ backend/
+
+# Drop privileges. Nothing in the image needs to be written at run time.
+RUN useradd --create-home --shell /usr/sbin/nologin hhs \
+    && chown -R hhs:hhs /app
+USER hhs
+
+EXPOSE 8000
+
+# No curl in a slim image, so probe with the interpreter that is already here.
+# Matches the unauthenticated /api/health route the app exposes for exactly this.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD ["python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else sys.exit(1)"]
+
+# Two workers to match the 2 vCPU on a t3.micro/small; ~109MB each, measured.
+# Safe now that validations are in Mongo rather than a per-process dict —
+# backend/ holds no module-level mutable state, so workers share nothing.
+# Override for a bigger box with `command:` in docker-compose.yml.
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]

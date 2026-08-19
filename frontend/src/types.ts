@@ -72,12 +72,24 @@ export interface DashboardBundle {
   clinician_note?: string
 }
 
+/** What the clinician submits. `patient_id` is in the URL, `author` from the token. */
 export interface ValidationPayload {
-  patient_id: string
   agreement: 'Yes' | 'No'
   calculated_hhs: number
   doctor_hhs: number
   reason: string
+}
+
+/**
+ * A stored validation, as read back from the server.
+ *
+ * `calculated_hhs` is what the engine said at the time it was recorded, which
+ * is not necessarily what it says now — later encounters move the score.
+ */
+export interface SavedValidation extends ValidationPayload {
+  patient_id: string
+  author: string
+  updated_at: string
 }
 
 // A doctor's review note, stored per patient. Distinct from the intake

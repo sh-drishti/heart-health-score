@@ -100,16 +100,3 @@ def get_dashboard(patient_id: str, source: str = "csv") -> dict | None:
         "assessment": assessment,
         **extra,
     })
-
-
-# In-memory validation store, keyed by patient_id.
-_validations: dict = {}
-
-
-def save_validation(validation: dict) -> dict:
-    _validations[validation["patient_id"]] = validation
-    return validation
-
-
-def get_validation(patient_id: str) -> dict | None:
-    return _validations.get(patient_id)

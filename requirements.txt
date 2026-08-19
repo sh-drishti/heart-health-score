@@ -1,10 +1,21 @@
-openpyxl
+# Local development and the legacy Streamlit apps.
+#
+# This is the FAT set: it includes everything backend/requirements.txt has plus
+# the Streamlit UI and analysis stack. Install this for local work on the
+# engine, the Streamlit apps (app.py, hhs_v1_2_ui_app.py), or the analysis
+# scripts (dendogram.py, seed_database.py).
+#
+# Do NOT install this on a deployed API box — use backend/requirements.txt.
+# It is ~560MB larger and the Streamlit apps must not be publicly reachable:
+# they talk to Mongo directly with no authentication.
+
+-r backend/requirements.txt
+
+# Streamlit UI (legacy — superseded by the React frontend)
 streamlit
 streamlit-extras
-pandas
-numpy
+
+# Analysis / notebooks
 matplotlib
 scipy
 scikit-learn
-pymongo
-python-dotenv

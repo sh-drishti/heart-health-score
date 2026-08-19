@@ -19,11 +19,13 @@ heart-health-score/
 ├── data/                         ← CSV patients, Excel thresholds, sample payload
 ├── backend/                      ← NEW FastAPI service
 │   ├── main.py                   ← app, CORS, endpoints
-│   ├── service.py                ← dashboard bundle builder + validation store
+│   ├── service.py                ← dashboard bundle builder
 │   ├── payload_convert.py        ← payload → patient dict
 │   ├── intake_schema.py          ← the 48 intake fields (single source of truth)
 │   ├── intake.py                 ← intake write path: score + save
 │   ├── notes.py                  ← clinical review notes (MongoDB)
+│   ├── validations.py            ← doctor agreement with the score (MongoDB)
+│   ├── timeutil.py               ← shared ISO-8601 UTC formatting
 │   └── requirements.txt          ← fastapi, uvicorn
 └── frontend/                     ← NEW Vite + React + TS app
     ├── src/pages/                ← LandingPage (/), DashboardPage, IntakePage
@@ -52,7 +54,7 @@ replaces the latter.
 # Python deps (Install root engine + backend dependencies)
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt -r backend/requirements.txt
+pip install -r requirements.txt   # includes backend/requirements.txt via -r
 
 # Frontend deps
 cd frontend
@@ -94,6 +96,70 @@ role-based access can be layered on per route later without splitting the
 project.
 
 The Vite dev server (`vite.config.ts`) automatically proxies all `/api/*` requests to `localhost:8000`, so all FastAPI routes work seamlessly without CORS issues.
+
+## Running with Docker
+
+Two containers: the API, and nginx serving the built frontend and proxying
+`/api` to it. Because nginx fronts both, the browser is same-origin and CORS
+does not apply to the web app.
+
+```bash
+docker compose up -d --build
+docker compose logs -f
+```
+
+The app is then on <http://localhost:8080>. Set `WEB_PORT` if 8080 is taken
+(`WEB_PORT=8090 docker compose up -d`), and `WEB_PORT=80` on a server.
+
+`.env` is read at run time via `env_file` and never baked into an image. The API
+will not start without `JWT_SECRET`, by design.
+
+Bootstrap the first admin on a fresh deployment:
+
+```bash
+docker compose exec api python seed_users.py --email you@example.com --role admin
+```
+
+### What is in the API image
+
+`backend/requirements.txt` only — the Streamlit and analysis stack is excluded,
+which is why the image is ~447MB rather than well over a gigabyte. The engine
+still scores identically: `hhs_v1_2_ui_app.py` guards its Streamlit import in a
+try/except.
+
+Two constraints worth knowing before editing the Dockerfile:
+
+- `WORKDIR` must stay `/app` (the repo root). `severity.py` reads
+  `data/feature_mapping_hhs_2.xlsx` at import time via a **relative** path, so
+  the process cannot start from anywhere else.
+- Root modules are copied by an explicit allowlist, not `COPY . .`. The API
+  needs exactly seven: `adapter.py`, `assessment_service.py`, `database.py`,
+  `hhs_v1_2_ui_app.py`, `mapping.py`, `notification.py`, `severity.py`. Add to
+  that list if a new import appears, or the container will fail at startup.
+
+### Measured resource usage
+
+Single uvicorn worker, against the real Atlas database:
+
+| | idle | 10 concurrent requests |
+|---|---|---|
+| API container | 100 MB | 104 MB |
+| nginx container | 22 MB | 24 MB |
+| API CPU | ~0% | 60–83% of one core |
+
+Scoring latency was 0.09s best case, 0.50s median and 1.13s p95 under 10-way
+concurrency, with 400/400 requests returning 200. Memory is flat under load, so
+**RAM is not the constraint — CPU is.** The API also boots and serves 200/200
+requests inside a hard 256MB cap without being OOM-killed, so a 1GB t3.micro has
+ample headroom at run time.
+
+Build the frontend image on your machine or in CI rather than on a small
+instance: `vite build` under Node needs more memory than a t3.micro comfortably
+has.
+
+`--workers` is 2, matching the 2 vCPU on a t3.micro/small at ~109MB each.
+`backend/` holds no module-level mutable state, so workers share nothing and
+the count is free to change.
 
 ## Data Sources
 
@@ -152,7 +218,8 @@ brackets.
 | `POST /api/v1/auth/users/{id}/password` | Set a password and end that account's sessions *[admin]* |
 | `GET /api/v1/patients?source=csv\|payload` | List patient IDs *[clinician, staff]* |
 | `GET /api/v1/patients/{id}?source=csv\|payload` | Full dashboard bundle: `{patient, patient_data, assessment}` *[clinician]* |
-| `POST /api/v1/validation` | Save doctor validation `{patient_id, agreement, calculated_hhs, doctor_hhs, reason}` (in-memory) *[clinician]* |
+| `GET /api/v1/patients/{id}/validation` | Doctor's recorded agreement, or `null` *[clinician]* |
+| `PUT /api/v1/patients/{id}/validation` | Upsert doctor validation `{agreement, calculated_hhs, doctor_hhs, reason}`; `author` comes from the token *[clinician]* |
 | `GET /api/v1/patients/{id}/note` | Saved clinical review note; `note` is `null` when none exists *[clinician]* |
 | `PUT /api/v1/patients/{id}/note` | Save (upsert) the review note `{note}`; the author is the signed-in account *[clinician]* |
 | `GET /api/v1/patients/{id}/monitoring` | Trend history; `monitoring` is `null` with no saved encounters *[clinician]* |
@@ -211,7 +278,7 @@ streamlit run hhs_v1_2_ui_app.py    # data entry -> ported to /entry
 
 | Problem | Fix |
 |---|---|
-| `ModuleNotFoundError` on backend | Run `pip install -r requirements.txt -r backend/requirements.txt` from repo root |
+| `ModuleNotFoundError` on backend | Run `pip install -r requirements.txt   # includes backend/requirements.txt via -r` from repo root |
 | `FileNotFoundError: data/...` | Ensure you started `uvicorn backend.main:app --reload` from the repo root, NOT inside `backend/` |
 | Payload source returns 502 | Check `.env` has valid `MONGODB_URI`; MongoDB reachable |
 | Port 5173 busy | Vite auto-picks 5174; backend CORS already allows it |

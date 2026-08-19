@@ -34,6 +34,7 @@ from backend import (
     self_service,
     service,
     users,
+    validations,
 )
 
 
@@ -181,7 +182,8 @@ def roles_note(*roles: str) -> str:
 
 
 class ValidationIn(BaseModel):
-    patient_id: str
+    """`patient_id` comes from the path and `author` from the token."""
+
     agreement: str
     calculated_hhs: float
     doctor_hhs: float
@@ -294,16 +296,49 @@ def patient_dashboard(patient_id: str, source: str = Source, _: Dict[str, Any] =
     return bundle
 
 
-@api.post(
-    "/validation",
+@api.get(
+    "/patients/{patient_id}/validation",
+    tags=["patients"],
+    summary="Read a doctor's agreement with the score" + roles_note("clinician"),
+    **guarded("clinician"),
+)
+def read_validation(patient_id: str, _: Dict[str, Any] = Clinician):
+    """Current validation for a patient. `validation` is null when none exists."""
+    try:
+        saved = validations.get_validation(patient_id)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "validation": saved}
+
+
+@api.put(
+    "/patients/{patient_id}/validation",
     tags=["patients"],
     summary="Record a doctor's agreement with the score" + roles_note("clinician"),
     **guarded("clinician"),
 )
-def create_validation(validation: ValidationIn, _: Dict[str, Any] = Clinician):
-    """Held in memory only: restarting the service discards these."""
-    saved = service.save_validation(validation.model_dump())
-    return {"status": "ok", "validation": saved}
+def write_validation(
+    patient_id: str, body: ValidationIn, user: Dict[str, Any] = Clinician
+):
+    """
+    Upsert: one current validation per patient.
+
+    The author is the signed-in account and is not accepted from the request.
+    """
+    try:
+        saved = validations.save_validation(
+            patient_id,
+            agreement=body.agreement,
+            calculated_hhs=body.calculated_hhs,
+            doctor_hhs=body.doctor_hhs,
+            reason=body.reason,
+            author=auth.actor_name(user),
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "validation": saved}
 
 
 # --- Clinical review notes --------------------------------------------------

@@ -12,6 +12,8 @@ Reuses the connection database.py already opens; that module is not modified.
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
+from backend.timeutil import iso_utc
+
 COLLECTION = "clinical_notes"
 
 
@@ -21,21 +23,6 @@ def _collection():
     from database import db
 
     return db[COLLECTION]
-
-
-def _iso_utc(value: Any) -> str:
-    """
-    Format a stored timestamp as ISO-8601 UTC.
-
-    Mongo returns naive datetimes, and str() on one yields a space-separated
-    string that JS parses as *local* time. Both endpoints must agree, or the
-    displayed time shifts between saving and reloading.
-    """
-
-    if isinstance(value, datetime):
-        aware = value if value.tzinfo else value.replace(tzinfo=timezone.utc)
-        return aware.isoformat()
-    return str(value or "")
 
 
 def get_note(patient_id: str) -> Optional[Dict[str, Any]]:
@@ -49,7 +36,7 @@ def get_note(patient_id: str) -> Optional[Dict[str, Any]]:
         "patient_id": doc["patient_id"],
         "note": doc.get("note", ""),
         "author": doc.get("author", ""),
-        "updated_at": _iso_utc(doc.get("updated_at")),
+        "updated_at": iso_utc(doc.get("updated_at")),
     }
 
 
