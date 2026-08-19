@@ -1,7 +1,7 @@
-import { useState } from 'react'
-import type { Assessment } from '@/types'
+import { useEffect, useState } from 'react'
+import type { Assessment, SavedValidation } from '@/types'
 import type { SeverityLevel } from '@/config/domains'
-import { postValidation } from '@/api/client'
+import { fetchValidation, saveValidation } from '@/api/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -36,28 +36,68 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
   const [agreement, setAgreement] = useState<'Yes' | 'No'>('Yes')
   const [doctorHhs, setDoctorHhs] = useState<number>(assessment.hhs)
   const [reason, setReason] = useState('')
+  const [existing, setExisting] = useState<SavedValidation | null>(null)
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  // Load what was recorded before, so the form shows the current state rather
+  // than a blank slate that invites overwriting an earlier judgement unseen.
+  useEffect(() => {
+    let stale = false
+    setExisting(null)
+    setSaved(false)
+    setErr(null)
+    setAgreement('Yes')
+    setDoctorHhs(assessment.hhs)
+    setReason('')
+
+    fetchValidation(patientId)
+      .then((found) => {
+        if (stale || !found) return
+        setExisting(found)
+        setAgreement(found.agreement === 'No' ? 'No' : 'Yes')
+        setDoctorHhs(found.doctor_hhs ?? assessment.hhs)
+        setReason(found.reason ?? '')
+      })
+      .catch(() => {
+        /* Not worth blocking the form: the clinician can still record one. */
+      })
+
+    return () => {
+      stale = true
+    }
+  }, [patientId, assessment.hhs])
 
   const save = async () => {
     setSaving(true)
     setSaved(false)
+    setErr(null)
     try {
-      await postValidation({
-        patient_id: patientId,
+      const stored = await saveValidation(patientId, {
         agreement,
         calculated_hhs: assessment.hhs,
         doctor_hhs: agreement === 'Yes' ? assessment.hhs : doctorHhs,
         reason: agreement === 'Yes' ? '' : reason,
       })
+      setExisting(stored)
       setSaved(true)
-    } catch {
-      // surface via console; keep simple per plan
-      console.error('validation save failed')
+    } catch (e) {
+      // Reported in the UI, not just the console: this used to claim success
+      // while the record was being dropped, which is the failure that matters.
+      setErr(e instanceof Error ? e.message : 'Could not save the assessment.')
     } finally {
       setSaving(false)
     }
   }
+
+  // The engine's score moves as new encounters arrive, so a validation recorded
+  // against an earlier score is worth pointing out rather than quietly showing
+  // a stale doctor's figure next to a changed calculated one.
+  const scoreMoved =
+    existing != null &&
+    existing.calculated_hhs != null &&
+    existing.calculated_hhs !== assessment.hhs
 
   return (
     <div className="mt-8">
@@ -131,16 +171,32 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
               </>
             )}
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 flex-wrap">
               <Button onClick={save} disabled={saving}>
-                {saving ? 'Saving…' : 'Save Assessment'}
+                {saving ? 'Saving…' : existing ? 'Update Assessment' : 'Save Assessment'}
               </Button>
               {saved && (
                 <span className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                  Assessment saved successfully.
+                  Assessment saved.
                 </span>
               )}
+              {err && (
+                <span className="text-sm text-destructive font-medium">{err}</span>
+              )}
             </div>
+
+            {existing && !saved && (
+              <p className="text-xs text-muted-foreground border-t pt-3">
+                Recorded by {existing.author || 'unknown'} on{' '}
+                {new Date(existing.updated_at).toLocaleString()}
+                {scoreMoved && (
+                  <>
+                    , against a calculated score of {existing.calculated_hhs}. The
+                    engine now scores {assessment.hhs}.
+                  </>
+                )}
+              </p>
+            )}
           </CardContent>
         </Card>
 

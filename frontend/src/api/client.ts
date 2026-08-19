@@ -25,6 +25,7 @@ import type {
   Submission,
   TokenPair,
   ValidationPayload,
+  SavedValidation,
 } from '../types'
 
 /** A request the server refused. `status` lets callers branch on 401/403/404. */
@@ -213,10 +214,29 @@ export function fetchDashboard(
   )
 }
 
-export function postValidation(
+// --- Clinical validation ----------------------------------------------------
+
+// Resolves to null when the patient has no validation on record yet.
+export async function fetchValidation(
+  patientId: string,
+): Promise<SavedValidation | null> {
+  const data = await json<{ validation: SavedValidation | null }>(
+    `/patients/${encodeURIComponent(patientId)}/validation`,
+    { label: 'validation' },
+  )
+  return data.validation ?? null
+}
+
+// The author is taken from the signed-in account server-side, so it is not sent.
+export async function saveValidation(
+  patientId: string,
   payload: ValidationPayload,
-): Promise<{ status: string; validation: ValidationPayload }> {
-  return json('/validation', { method: 'POST', body: payload, label: 'validation' })
+): Promise<SavedValidation> {
+  const data = await json<{ validation: SavedValidation }>(
+    `/patients/${encodeURIComponent(patientId)}/validation`,
+    { method: 'PUT', body: payload, label: 'validation' },
+  )
+  return data.validation
 }
 
 // --- Clinical review notes --------------------------------------------------

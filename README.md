@@ -19,11 +19,13 @@ heart-health-score/
 ├── data/                         ← CSV patients, Excel thresholds, sample payload
 ├── backend/                      ← NEW FastAPI service
 │   ├── main.py                   ← app, CORS, endpoints
-│   ├── service.py                ← dashboard bundle builder + validation store
+│   ├── service.py                ← dashboard bundle builder
 │   ├── payload_convert.py        ← payload → patient dict
 │   ├── intake_schema.py          ← the 48 intake fields (single source of truth)
 │   ├── intake.py                 ← intake write path: score + save
 │   ├── notes.py                  ← clinical review notes (MongoDB)
+│   ├── validations.py            ← doctor agreement with the score (MongoDB)
+│   ├── timeutil.py               ← shared ISO-8601 UTC formatting
 │   └── requirements.txt          ← fastapi, uvicorn
 └── frontend/                     ← NEW Vite + React + TS app
     ├── src/pages/                ← LandingPage (/), DashboardPage, IntakePage
@@ -155,8 +157,9 @@ Build the frontend image on your machine or in CI rather than on a small
 instance: `vite build` under Node needs more memory than a t3.micro comfortably
 has.
 
-`--workers` stays at 1 because `service._validations` is still a process-local
-dict; a second worker would see a different set of validations.
+`--workers` is 2, matching the 2 vCPU on a t3.micro/small at ~109MB each.
+`backend/` holds no module-level mutable state, so workers share nothing and
+the count is free to change.
 
 ## Data Sources
 
@@ -215,7 +218,8 @@ brackets.
 | `POST /api/v1/auth/users/{id}/password` | Set a password and end that account's sessions *[admin]* |
 | `GET /api/v1/patients?source=csv\|payload` | List patient IDs *[clinician, staff]* |
 | `GET /api/v1/patients/{id}?source=csv\|payload` | Full dashboard bundle: `{patient, patient_data, assessment}` *[clinician]* |
-| `POST /api/v1/validation` | Save doctor validation `{patient_id, agreement, calculated_hhs, doctor_hhs, reason}` (in-memory) *[clinician]* |
+| `GET /api/v1/patients/{id}/validation` | Doctor's recorded agreement, or `null` *[clinician]* |
+| `PUT /api/v1/patients/{id}/validation` | Upsert doctor validation `{agreement, calculated_hhs, doctor_hhs, reason}`; `author` comes from the token *[clinician]* |
 | `GET /api/v1/patients/{id}/note` | Saved clinical review note; `note` is `null` when none exists *[clinician]* |
 | `PUT /api/v1/patients/{id}/note` | Save (upsert) the review note `{note}`; the author is the signed-in account *[clinician]* |
 | `GET /api/v1/patients/{id}/monitoring` | Trend history; `monitoring` is `null` with no saved encounters *[clinician]* |

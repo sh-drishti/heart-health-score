@@ -19,18 +19,22 @@ ENV PYTHONUNBUFFERED=1 \
 COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
-# Explicit allowlist rather than `COPY . .`, so the Streamlit apps and analysis
-# scripts stay out of the image. These seven root modules are exactly what
-# `import backend.main` pulls in:
-COPY adapter.py assessment_service.py database.py hhs_v1_2_ui_app.py \
-     mapping.py notification.py severity.py ./
+# The engine modules, which live in the repo root. `import backend.main` needs
+# exactly seven of them — adapter, assessment_service, database,
+# hhs_v1_2_ui_app, mapping, notification, severity — but we copy all the root
+# modules rather than listing those seven, so that adding a new import later
+# does not break the container at startup.
+#
+# The extras (app.py, tab2.py, ...) are a few KB and inert: they are Streamlit
+# code, streamlit is not installed here, and no route serves them. Nothing runs
+# in this image except the uvicorn process in CMD.
+#
+# seed_users.py comes along for bootstrapping the first admin:
+#   docker compose exec api python seed_users.py --email ... --role admin
+COPY *.py ./
 
 # Referenced at import time by severity.py, and by the CSV patient source.
 COPY data/ data/
-
-# Bootstrapping the first admin on a fresh deploy:
-#   docker compose exec api python seed_users.py --email ... --role admin
-COPY seed_users.py ./
 
 COPY backend/ backend/
 
@@ -46,7 +50,8 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
     CMD ["python", "-c", "import urllib.request,sys; sys.exit(0) if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status==200 else sys.exit(1)"]
 
-# One worker: ~124MB RSS each, and service._validations is still a
-# process-local dict, so a second worker would see a different set of
-# validations. Raise this only after that moves to a collection.
-CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
+# Two workers to match the 2 vCPU on a t3.micro/small; ~109MB each, measured.
+# Safe now that validations are in Mongo rather than a per-process dict —
+# backend/ holds no module-level mutable state, so workers share nothing.
+# Override for a bigger box with `command:` in docker-compose.yml.
+CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2"]
