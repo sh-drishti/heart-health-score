@@ -117,6 +117,11 @@ app = FastAPI(
     description=API_DESCRIPTION,
     openapi_tags=TAGS_METADATA,
     lifespan=lifespan,
+    # nginx only proxies /api/, so the default root-level docs paths fall
+    # through to the SPA. Serving them under /api keeps one proxy rule.
+    docs_url="/api/docs",
+    redoc_url="/api/redoc",
+    openapi_url="/api/openapi.json",
 )
 
 # Comma-separated in CORS_ORIGINS so a deployed frontend origin does not need a
