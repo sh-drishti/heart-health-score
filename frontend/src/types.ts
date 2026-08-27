@@ -2,7 +2,7 @@
 
 export type Source = 'csv' | 'payload'
 
-// One parameter's computed info (severity.py output)
+// One parameter's computed info (backend/param_severity.py output)
 export interface ParamInfo {
   value: number | string | null
   severity: number | null

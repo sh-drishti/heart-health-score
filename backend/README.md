@@ -10,16 +10,17 @@ FastAPI wrapper around the existing Python HHS engine. No scoring logic lives he
 | `security.py` | Password hashing and token minting. Pure — no database, no FastAPI. Refuses to import without `JWT_SECRET`. |
 | `users.py` | The `users` and `refresh_tokens` collections. The only collections this API owns; the rest keep their existing owners. |
 | `auth.py` | `/auth/*` routes plus the dependencies every other route is guarded by (`current_user`, `require_role`, `current_patient_id`). |
-| `service.py` | Dashboard bundle builder. Loads patient (CSV or MongoDB), runs `calculate_hhs` + `calculate_patient_severity`, sanitizes to JSON-safe output. Also holds the in-memory validation store. |
-| `payload_convert.py` | MongoDB encounter payload → patient dict. Own copy of `payload_adapter.py` logic (original has import-time side effects, so it is not imported). Returns plain dicts for clean serialization. |
-| `requirements.txt` | `fastapi`, `uvicorn[standard]`, `pyjwt`, `bcrypt` — extra deps on top of the repo's root `requirements.txt`. |
+| `service.py` | Dashboard bundle builder. Loads patient (CSV or MongoDB), runs `calculate_hhs` + `calculate_patient_severity`, sanitizes to JSON-safe output. |
+| `param_severity.py` | Per-parameter severity for the dashboard badges, taken from the engine's own `sev_*` functions. Replaced the root `severity.py`, which banded values from a spreadsheet and misread every risk threshold — see the module docstring. |
+| `payload_convert.py` | MongoDB encounter payload → patient dict. Returns plain dicts for clean serialization. |
+| `requirements.txt` | The complete dependency set for the API: `fastapi`, `uvicorn[standard]`, `pyjwt`, `bcrypt`, `pandas`, `numpy`, `openpyxl`, `pymongo`, `python-dotenv`. |
 
 ## Shared modules reused (read-only, never modified)
 
 - `adapter.calculate_hhs` → official HHS assessment (CSV source)
-- `severity.calculate_patient_severity` → per-parameter severities (both sources)
+- `hhs_v1_2_ui_app.sev_*` → per-parameter clinical severities, via `param_severity`
 - `database.EncounterRepository` → MongoDB payloads (payload source)
-- `mapping`, `config` → field metadata, domains
+- `mapping` → field metadata (labels, units, domains)
 
 ## Run
 

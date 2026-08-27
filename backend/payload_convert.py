@@ -1,9 +1,7 @@
 """
 Payload -> patient conversion for the API backend.
 
-Own copy of payload_adapter.py logic. Existing file not imported because
-it has import-time side effects (reads JSON file, prints). This version
-returns plain dicts so FastAPI can serialize directly.
+Returns plain dicts so FastAPI can serialize directly.
 """
 
 from mapping import HHS_FIELD_METADATA

@@ -1,4 +1,4 @@
-// Port of config.py DOMAINS + SECTION_FIELDS + mapping labels.
+// Domain weights, section fields and field labels, mirroring the engine.
 // Static constants, no backend dependency.
 
 export interface DomainDef {
@@ -151,7 +151,7 @@ export function getLevel(severity: number | null): SeverityLevel {
   return 'risk'
 }
 
-// severity -> color (port of ui.py get_color)
+// severity -> color
 export function getColor(severity: number | null): string {
   if (severity === null || severity > 1) return SEVERITY_HEX.neutral
   return SEVERITY_HEX[getLevel(severity)]

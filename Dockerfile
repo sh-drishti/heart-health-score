@@ -6,9 +6,9 @@
 # Python 3.14 to match what the dependency pins were tested against.
 FROM python:3.14-slim
 
-# WORKDIR must be the repo root: severity.py reads
-# data/feature_mapping_hhs_2.xlsx at import time via a RELATIVE path, so the
-# process will not start from anywhere else.
+# WORKDIR must be the repo root: data/cardio_hhs_2.csv is resolved by a
+# RELATIVE path when source=csv is requested, so the process will not find it
+# from anywhere else.
 WORKDIR /app
 
 ENV PYTHONUNBUFFERED=1 \
@@ -20,20 +20,19 @@ COPY backend/requirements.txt backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 # The engine modules, which live in the repo root. `import backend.main` needs
-# exactly seven of them — adapter, assessment_service, database,
-# hhs_v1_2_ui_app, mapping, notification, severity — but we copy all the root
-# modules rather than listing those seven, so that adding a new import later
-# does not break the container at startup.
+# six of them — adapter, assessment_service, database, hhs_v1_2_ui_app,
+# mapping, notification — but we copy all the root modules rather than listing
+# those six, so that adding a new import later does not break the container at
+# startup.
 #
-# The extras (app.py, tab2.py, ...) are a few KB and inert: they are Streamlit
-# code, streamlit is not installed here, and no route serves them. Nothing runs
-# in this image except the uvicorn process in CMD.
-#
-# seed_users.py comes along for bootstrapping the first admin:
+# seed_users.py is the seventh and only other root module. It never runs on
+# import; it bootstraps the first admin:
 #   docker compose exec api python seed_users.py --email ... --role admin
 COPY *.py ./
 
-# Referenced at import time by severity.py, and by the CSV patient source.
+# data/cardio_hhs_2.csv backs the `source=csv` patient list. The spreadsheets
+# alongside it no longer drive any code — they are kept as the written record of
+# which clinical guideline each threshold came from.
 COPY data/ data/
 
 COPY backend/ backend/
