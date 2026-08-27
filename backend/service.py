@@ -3,7 +3,8 @@ Dashboard data service.
 
 Reuses the existing Python engine untouched:
 - adapter.calculate_hhs            -> official HHS assessment (CSV source)
-- severity.calculate_patient_severity -> per-parameter severities
+- param_severity.calculate_patient_severity -> per-parameter severities,
+  taken from the same engine rather than the spreadsheet (see that module)
 - database.EncounterRepository     -> MongoDB payloads (payload source)
 """
 
@@ -13,7 +14,7 @@ import numpy as np
 import pandas as pd
 
 from adapter import calculate_hhs
-from severity import calculate_patient_severity
+from backend.param_severity import calculate_patient_severity
 from database import EncounterRepository
 from backend.payload_convert import payload_to_patient
 
