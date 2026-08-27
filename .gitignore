@@ -2,3 +2,6 @@
 __pycache__
 .venv
 venv
+# Agent tooling (the Streamlit skill here was a symlink into venv/)
+.agents/
+.claude/
