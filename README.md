@@ -38,12 +38,31 @@ heart-health-score/
     └── src/types.ts              ← API types
 ```
 
+### What each root module is
+
+The filenames are historical and a couple of them mislead, so:
+
+| file | what it actually is |
+|---|---|
+| `hhs_v1_2_ui_app.py` | **The scoring engine.** `HHSManualScorer`, every `sev_*` threshold function, domain weights, red flags. The name says "UI app" for historical reasons — it is the most important file in the repo. |
+| `adapter.py` | Patient row → engine input (`FieldRecord` per field), then runs the scorer. |
+| `mapping.py` | `HHS_FIELD_METADATA`: label, unit and domain for each field. |
+| `database.py` | MongoDB collections and the repositories over them. |
+| `assessment_service.py` | Assembles an encounter payload from a scored assessment. |
+| `notification.py` | Email and push delivery. `send_push_notification` is still a stub. |
+| `seed_users.py` | Bootstraps the first admin account. Never imported; run directly. |
+
 `hhs_v1_2_ui_app.py` is two things in one file: the scoring engine (lines
 1–895, used by everything) and a 490-line Streamlit data-entry app
 (`run_streamlit_app`, lines 955–1442) that the React `/entry` route replaced.
 The Streamlit half is left in place deliberately — it is inert, since its
 `import streamlit` is guarded and streamlit is not installed, and the file is
 the one piece of clinical code that is never edited.
+
+Thresholds live in the engine and nowhere else. `data/` still holds the
+threshold spreadsheets, but nothing reads them: they are kept as the written
+record of which clinical guideline each cut-point came from, which the engine's
+`piecewise` points do not carry.
 
 ## Prerequisites
 
