@@ -1,11 +1,12 @@
 # Healthy Heart Score Dashboard
 
-Cardiovascular risk dashboard. Two frontends, one engine:
+Cardiovascular risk dashboard: a React (Vite + Tailwind v4 + shadcn/ui)
+frontend on a FastAPI backend, over the Python HHS scoring engine
+(`hhs_v1_2_ui_app.py`), which is never modified.
 
-- **New**: React (Vite + Tailwind v4 + shadcn/ui) frontend + FastAPI backend
-- **Legacy**: original Streamlit app (untouched, still works)
-
-The Python HHS scoring engine (`hhs_v1_2_ui_app.py`) is shared by both — never modified.
+The original Streamlit app has been removed — the React frontend replaced every
+one of its screens. The engine is the single source of truth for clinical
+thresholds; nothing computes severity a second time.
 
 ---
 
@@ -13,10 +14,10 @@ The Python HHS scoring engine (`hhs_v1_2_ui_app.py`) is shared by both — never
 
 ```
 heart-health-score/
-├── app.py, ui.py, tab2.py, ...   ← legacy Streamlit app (untouched)
-├── hhs_v1_2_ui_app.py            ← core scoring engine (shared)
-├── adapter.py, severity.py, ...  ← engine helpers (shared)
-├── data/                         ← CSV patients, Excel thresholds, sample payload
+├── hhs_v1_2_ui_app.py            ← core scoring engine (never modified)
+├── adapter.py, mapping.py, ...   ← engine helpers
+├── seed_users.py                 ← bootstrap the first admin account
+├── data/                         ← CSV patients, threshold spreadsheets (reference only)
 ├── backend/                      ← NEW FastAPI service
 │   ├── main.py                   ← app, CORS, endpoints
 │   ├── service.py                ← dashboard bundle builder
@@ -32,15 +33,17 @@ heart-health-score/
     ├── src/components/           ← dashboard components
     ├── src/components/intake/    ← form field renderer + live score preview
     ├── src/components/ui/        ← shadcn/ui primitives
-    ├── src/config/domains.ts     ← port of config.py
+    ├── src/config/domains.ts     ← domain weights and severity levels
     ├── src/api/client.ts         ← backend client
     └── src/types.ts              ← API types
 ```
 
-Both Streamlit apps are ported. `hhs_v1_2_ui_app.py` is two things in one file:
-the scoring engine (lines 1–895, shared by everything) and a 490-line Streamlit
-data-entry app (`run_streamlit_app`, lines 955–1442). The React `/entry` route
-replaces the latter.
+`hhs_v1_2_ui_app.py` is two things in one file: the scoring engine (lines
+1–895, used by everything) and a 490-line Streamlit data-entry app
+(`run_streamlit_app`, lines 955–1442) that the React `/entry` route replaced.
+The Streamlit half is left in place deliberately — it is inert, since its
+`import streamlit` is guarded and streamlit is not installed, and the file is
+the one piece of clinical code that is never edited.
 
 ## Prerequisites
 
@@ -51,10 +54,10 @@ replaces the latter.
 ## Setup (first time)
 
 ```bash
-# Python deps (Install root engine + backend dependencies)
+# Python deps
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt   # includes backend/requirements.txt via -r
+pip install -r backend/requirements.txt
 
 # Frontend deps
 cd frontend
@@ -64,7 +67,7 @@ cd ..
 
 ## Running Backend & Frontend
 
-> **Important**: Do **not** run `uvicorn` inside the `backend/` directory. The backend relies on shared scoring engine modules (`adapter.py`, `severity.py`, `database.py`) and data files (`data/cardio_hhs_2.csv`) located at the repository root. Always run `uvicorn` from the **repository root**.
+> **Important**: Do **not** run `uvicorn` inside the `backend/` directory. The backend relies on shared scoring engine modules (`adapter.py`, `hhs_v1_2_ui_app.py`, `database.py`) and data files (`data/cardio_hhs_2.csv`) located at the repository root. Always run `uvicorn` from the **repository root**.
 
 Two terminals from repo root:
 
@@ -122,20 +125,18 @@ docker compose exec api python seed_users.py --email you@example.com --role admi
 
 ### What is in the API image
 
-`backend/requirements.txt` only — the Streamlit and analysis stack is excluded,
-which is why the image is ~447MB rather than well over a gigabyte. The engine
-still scores identically: `hhs_v1_2_ui_app.py` guards its Streamlit import in a
-try/except.
+`backend/requirements.txt` only — no Streamlit, no analysis stack, which is why
+the image is ~447MB rather than well over a gigabyte. `hhs_v1_2_ui_app.py`
+guards its Streamlit import in a try/except, so the engine scores identically
+without it installed.
 
-Two constraints worth knowing before editing the Dockerfile:
-
-- `WORKDIR` must stay `/app` (the repo root). `severity.py` reads
-  `data/feature_mapping_hhs_2.xlsx` at import time via a **relative** path, so
-  the process cannot start from anywhere else.
-- Root modules are copied by an explicit allowlist, not `COPY . .`. The API
-  needs exactly seven: `adapter.py`, `assessment_service.py`, `database.py`,
-  `hhs_v1_2_ui_app.py`, `mapping.py`, `notification.py`, `severity.py`. Add to
-  that list if a new import appears, or the container will fail at startup.
+One constraint worth knowing before editing the Dockerfile: `WORKDIR` must stay
+`/app` (the repo root), because `data/cardio_hhs_2.csv` is resolved by a
+**relative** path when `source=csv` is requested. The API imports six root
+modules — `adapter.py`, `assessment_service.py`, `database.py`,
+`hhs_v1_2_ui_app.py`, `mapping.py`, `notification.py` — plus `seed_users.py`
+for bootstrapping; `COPY *.py ./` takes all of them, so a new import will not
+break startup.
 
 ### Measured resource usage
 
@@ -260,25 +261,14 @@ Field definitions come from `backend/intake_schema.py` and are served over HTTP
 rather than hand-copied into TypeScript. **Changing a bound or default means
 editing that one file**, not the React components.
 
-Unlike the Streamlit original, the form shows the assessment as you type. The
-original computed it on every rerun but never rendered it.
-
-## Legacy Streamlit Apps
-
-Two separate apps, both still work:
-
-```bash
-source venv/bin/activate
-
-streamlit run app.py                # dashboard  -> ported to /dashboard
-streamlit run hhs_v1_2_ui_app.py    # data entry -> ported to /entry
-```
+The form shows the assessment as you type. The Streamlit app it replaced
+computed the score on every rerun but never rendered it.
 
 ## Troubleshooting
 
 | Problem | Fix |
 |---|---|
-| `ModuleNotFoundError` on backend | Run `pip install -r requirements.txt   # includes backend/requirements.txt via -r` from repo root |
+| `ModuleNotFoundError` on backend | Run `pip install -r backend/requirements.txt` from repo root |
 | `FileNotFoundError: data/...` | Ensure you started `uvicorn backend.main:app --reload` from the repo root, NOT inside `backend/` |
 | Payload source returns 502 | Check `.env` has valid `MONGODB_URI`; MongoDB reachable |
 | Port 5173 busy | Vite auto-picks 5174; backend CORS already allows it |

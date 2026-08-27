@@ -1,12 +1,10 @@
 # Dependencies for the FastAPI service only — this is what gets installed on a
 # deployed API box or into the API container.
 #
-# Deliberately EXCLUDES the Streamlit/analysis stack in the root
-# requirements.txt (streamlit, plotly, matplotlib, scipy, scikit-learn,
-# pyarrow, ...). Those are only needed by app.py / hhs_v1_2_ui_app.py in UI
-# mode and by the analysis scripts, none of which the API serves.
-# hhs_v1_2_ui_app.py already guards its Streamlit import in a try/except, so
-# the scoring engine imports and runs correctly without it.
+# Deliberately EXCLUDES the Streamlit/analysis stack (streamlit, plotly,
+# matplotlib, scipy, scikit-learn, pyarrow, ...). hhs_v1_2_ui_app.py guards its
+# Streamlit import in a try/except, so the scoring engine imports and runs
+# correctly without it.
 #
 # Versions pinned so a fresh install matches what was tested. Regenerate a
 # full transitive lock with `pip freeze` if you ever need one.
@@ -19,12 +17,10 @@ uvicorn[standard]==0.51.0
 pyjwt==2.13.0
 bcrypt==5.0.0
 
-# The scoring engine. severity.py reads data/feature_mapping_hhs_2.xlsx at
-# import time, which is why openpyxl is required here and why the process must
-# run with the repo root as its working directory.
+# The scoring engine. No Excel reader is needed any more: the thresholds now
+# come from the engine's own sev_* functions rather than a spreadsheet.
 pandas==3.0.5
 numpy==2.5.1
-openpyxl==3.1.5
 
 # Mongo + config
 pymongo==4.17.0
