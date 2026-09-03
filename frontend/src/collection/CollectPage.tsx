@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { CheckCircle2, ClipboardList, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -24,8 +25,11 @@ import {
 //   2. Submitting again with the same employee code corrects the earlier
 //      record rather than adding a second one.
 //
-// The access code is asked for first, before anyone fills in 25 fields, so a
-// wrong code fails in two seconds rather than after ten minutes of typing.
+// The access code normally arrives in the link as ?k=..., so an invited person
+// clicks once and lands on the form. Typing it is the fallback for a link that
+// lost its query string — pasted into a chat that stripped it, say. Either way
+// the code is checked before the form appears, so a wrong one fails in two
+// seconds rather than after ten minutes of typing.
 
 type Draft = Record<string, { value: string; unknown: boolean }>
 
@@ -49,7 +53,13 @@ function fieldHint(field: FieldDef): string {
 }
 
 export function CollectPage() {
-  const [accessCode, setAccessCode] = useState('')
+  const [params] = useSearchParams()
+  const codeFromLink = params.get('k')?.trim() ?? ''
+
+  const [accessCode, setAccessCode] = useState(codeFromLink)
+  // Skip the gate entirely while a link-supplied code is being checked, so it
+  // does not flash on screen for people who did nothing wrong.
+  const [checking, setChecking] = useState(codeFromLink !== '')
   const [schema, setSchema] = useState<Schema | null>(null)
   const [draft, setDraft] = useState<Draft>({})
 
@@ -61,6 +71,33 @@ export function CollectPage() {
   const [err, setErr] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [done, setDone] = useState<{ created: boolean } | null>(null)
+
+  // ---- link-supplied code ---------------------------------------------
+
+  useEffect(() => {
+    if (!codeFromLink) return
+
+    let cancelled = false
+
+    fetchSchema(codeFromLink)
+      .then((loaded) => {
+        if (cancelled) return
+        setSchema(loaded)
+        setDraft(emptyDraft(loaded))
+      })
+      .catch((e) => {
+        // Fall through to the manual gate rather than dead-ending: the link may
+        // simply be stale, and the person may have the current code to hand.
+        if (!cancelled) setErr(e instanceof Error ? e.message : String(e))
+      })
+      .finally(() => {
+        if (!cancelled) setChecking(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [codeFromLink])
 
   // ---- gate -----------------------------------------------------------
 
@@ -178,6 +215,17 @@ export function CollectPage() {
     )
   }
 
+  // ---- checking a link-supplied code ----------------------------------
+
+  if (checking) {
+    return shell(
+      <div className="py-24 text-center text-muted-foreground">
+        <Loader2 className="size-6 animate-spin mx-auto mb-3" />
+        <p className="text-sm">Opening the form…</p>
+      </div>,
+    )
+  }
+
   // ---- gate -----------------------------------------------------------
 
   if (!schema) {
@@ -186,8 +234,9 @@ export function CollectPage() {
         <ShieldCheck className="size-9 text-primary mb-5" />
         <h1 className="text-2xl font-semibold tracking-tight mb-2">Access code</h1>
         <p className="text-muted-foreground text-sm mb-7">
-          Enter the code you were given. It was sent with your invitation to this
-          collection round.
+          {codeFromLink
+            ? 'That link did not work. Enter the current code, or ask for a fresh link.'
+            : 'Your invitation link should open this form directly. If it did not, enter the code you were given.'}
         </p>
 
         <div className="space-y-2 mb-5">
