@@ -14,6 +14,7 @@ import { useAuth } from '@/auth/AuthContext'
 // Temporary: the additional-parameter collection programme. Delete this import,
 // the /collect route below, and src/collection/ to remove it.
 import { CollectPage } from '@/collection/CollectPage'
+import { ReviewPage } from '@/collection/ReviewPage'
 
 // Three surfaces: /dashboard for clinicians reviewing anyone, /my-health for a
 // patient reading their own record, and /entry — the same 48-field form for all
@@ -46,6 +47,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/collect" element={<CollectPage />} />
+          <Route path="/collect/review" element={<ReviewPage />} />
           <Route
             path="/dashboard"
             element={

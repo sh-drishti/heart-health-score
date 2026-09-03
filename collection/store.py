@@ -74,3 +74,11 @@ def get_submission(employee_code: str) -> Optional[dict]:
 
 def count_submissions() -> int:
     return _collection().count_documents({})
+
+
+def list_submissions() -> list[dict]:
+    """Every submission, newest correction first. Used by the review page."""
+
+    return list(
+        _collection().find({}, {"_id": 0}).sort("updated_at", -1)
+    )

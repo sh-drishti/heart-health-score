@@ -112,3 +112,51 @@ export async function submit(
   if (!res.ok) throw await parseError(res)
   return res.json()
 }
+
+
+// ---- review (separate code) -------------------------------------------------
+
+export interface StoredAnswer {
+  value: string | number | null
+  unknown: boolean
+}
+
+export interface Submission {
+  employee_code: string
+  full_name: string
+  revision: number
+  created_at: string
+  updated_at: string
+  answers: Record<string, StoredAnswer>
+}
+
+export interface Review extends Schema {
+  count: number
+  submissions: Submission[]
+}
+
+export async function fetchSubmissions(adminCode: string): Promise<Review> {
+  const res = await fetch(`${BASE}/submissions`, {
+    headers: { 'X-Admin-Code': adminCode },
+  })
+  if (!res.ok) throw await parseError(res)
+  return res.json()
+}
+
+/** Downloads the CSV. The code travels in a header, so this cannot be a plain
+ *  link — fetch it, then hand the browser a blob to save. */
+export async function downloadCsv(adminCode: string): Promise<void> {
+  const res = await fetch(`${BASE}/submissions.csv`, {
+    headers: { 'X-Admin-Code': adminCode },
+  })
+  if (!res.ok) throw await parseError(res)
+
+  const url = URL.createObjectURL(await res.blob())
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `hhs-parameters-${new Date().toISOString().slice(0, 10)}.csv`
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  URL.revokeObjectURL(url)
+}
