@@ -12,24 +12,40 @@ import { API_BASE } from '@/api/config'
 
 const BASE = `${API_BASE}/api/collect`
 
+/** A field is disabled when an earlier answer makes it meaningless — pack-years
+ *  for someone who has never smoked. The server enforces this too; the browser
+ *  is not the authority. */
+export interface DependsOn {
+  field: string
+  disabled_when: (string | number)[]
+  value_when_disabled: string | number
+}
+
 export interface FieldDef {
   key: string
   label: string
   section: string
   kind: 'number' | 'choice' | 'text'
   unit: string
+  description: string
+  /** 'self' — answerable from your own knowledge. 'report' — copied off a lab
+   *  or scan result. */
+  group: 'self' | 'report'
   choices?: string[]
   min?: number
   max?: number
+  depends_on?: DependsOn
 }
 
 export interface SectionDef {
   section: string
+  group: 'self' | 'report'
   fields: FieldDef[]
 }
 
 export interface Schema {
   sections: SectionDef[]
+  groups: Record<string, string>
   field_count: number
 }
 

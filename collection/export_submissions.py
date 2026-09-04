@@ -30,11 +30,17 @@ from typing import Any
 from collection.schema import FIELDS
 from collection.store import _collection
 
+# BMI and waist-hip ratio are computed from the measurements rather than asked
+# for, so they are not in FIELDS and need naming here. Marked "calculated" so
+# nobody mistakes them for something the person typed.
+DERIVED = [("_bmi", "BMI (calculated)"), ("_whr", "Waist-Hip Ratio (calculated)")]
+
 COLUMNS = [
     "Full Name",
     "Company Employee Code",
     "Collection Date",
     *[field["label"] for field in FIELDS],
+    *[label for _, label in DERIVED],
     "Notes",
     "Last Updated Local",
 ]
@@ -70,6 +76,8 @@ def rows() -> list[dict[str, str]]:
         }
         for field in FIELDS:
             row[field["label"]] = _cell(answers.get(field["key"]))
+        for key, label in DERIVED:
+            row[label] = _cell(answers.get(key))
 
         out.append(row)
 

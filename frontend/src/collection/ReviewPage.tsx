@@ -291,6 +291,35 @@ export function ReviewPage() {
                             </div>
                           ))}
 
+                          {(s.answers._bmi || s.answers._whr) && (
+                            <div className="mb-5">
+                              <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                                Calculated
+                              </h3>
+                              <dl className="grid gap-x-8 gap-y-1.5 sm:grid-cols-2">
+                                {s.answers._bmi && (
+                                  <div className="flex justify-between gap-4 border-b border-border/40 py-1">
+                                    <dt className="text-muted-foreground">BMI</dt>
+                                    <dd className="font-medium tabular-nums">
+                                      {answerText(s.answers._bmi)}
+                                      <span className="text-muted-foreground font-normal ml-1">
+                                        kg/m²
+                                      </span>
+                                    </dd>
+                                  </div>
+                                )}
+                                {s.answers._whr && (
+                                  <div className="flex justify-between gap-4 border-b border-border/40 py-1">
+                                    <dt className="text-muted-foreground">Waist-hip ratio</dt>
+                                    <dd className="font-medium tabular-nums">
+                                      {answerText(s.answers._whr)}
+                                    </dd>
+                                  </div>
+                                )}
+                              </dl>
+                            </div>
+                          )}
+
                           {s.answers._notes && (
                             <div>
                               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
