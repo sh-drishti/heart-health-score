@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import {
+  Activity,
   ArrowRight,
   ClipboardPlus,
   HeartPulse,
@@ -49,6 +50,15 @@ const VIEWS: Array<{
     body: 'Record an encounter across 48 clinical inputs on behalf of someone, see the score update live, and save it for review.',
     action: 'Start an encounter',
     roles: ['clinician', 'staff'],
+  },
+  {
+    to: '/ecg',
+    icon: Activity,
+    title: 'ECG Interpretation',
+    role: 'For clinical staff',
+    body: 'Enter five interval measurements — heart rate, PR, QRS, QT, QTc — and get a screening read across the PTB-XL superclasses. Not saved, not linked to a patient.',
+    action: 'Interpret an ECG',
+    roles: ['clinician', 'staff', 'admin'],
   },
   {
     to: '/admin',
