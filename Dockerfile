@@ -37,6 +37,11 @@ COPY data/ data/
 
 COPY backend/ backend/
 
+# ECG interpretation, including the 2.4MB model artefact under ecg/models/.
+# Its own top-level package, so it needs its own COPY — `COPY *.py ./` above
+# matches root modules only.
+COPY ecg/ ecg/
+
 # Drop privileges. Nothing in the image needs to be written at run time.
 RUN useradd --create-home --shell /usr/sbin/nologin hhs \
     && chown -R hhs:hhs /app

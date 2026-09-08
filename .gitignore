@@ -5,3 +5,6 @@ venv
 # Agent tooling (the Streamlit skill here was a symlink into venv/)
 .agents/
 .claude/
+
+# Scratch space for files handed over by other people, not part of the build.
+temp/

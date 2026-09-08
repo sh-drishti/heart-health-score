@@ -1,0 +1,48 @@
+{
+  "model_version": "ECG-v1-hr500-official",
+  "recommended_model": "xgboost",
+  "selection_metric": "fold_9_macro_f1",
+  "thresholds": {
+    "NORM": 0.34,
+    "MI": 0.24000000000000005,
+    "STTC": 0.23000000000000004,
+    "CD": 0.22000000000000003,
+    "HYP": 0.16000000000000003
+  },
+  "sampling_frequency": 500,
+  "train_folds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ],
+  "validation_folds": [
+    9
+  ],
+  "test_folds": [
+    10
+  ],
+  "features": [
+    "heart_rate",
+    "pr_interval",
+    "qrs_duration",
+    "qt_interval",
+    "qtc_interval"
+  ],
+  "targets": [
+    "NORM",
+    "MI",
+    "STTC",
+    "CD",
+    "HYP"
+  ],
+  "model_type": "xgboost",
+  "model_path": "ecg_v1_hr500_official_selected.joblib",
+  "training_rows": 17308,
+  "final_test_rows": 2177,
+  "final_test_evaluation": "one-time evaluation on untouched PTB-XL fold 10"
+}

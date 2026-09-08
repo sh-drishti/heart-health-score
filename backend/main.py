@@ -622,3 +622,11 @@ def my_note(patient_id: str = Depends(auth.current_patient_id)):
 
 
 app.include_router(api)
+
+# ECG interpretation — standalone, reads and writes no patient record. Its own
+# package so the model artefact and its dependencies stay out of the clinical
+# code path; the model is lazy-loaded, so importing this costs nothing until an
+# ECG is actually interpreted.
+from ecg.routes import router as ecg_router  # noqa: E402
+
+app.include_router(ecg_router)

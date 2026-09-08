@@ -11,6 +11,7 @@ import { AdminPage } from '@/pages/AdminPage'
 import { MyHealthPage } from '@/pages/MyHealthPage'
 import { IntakePage } from '@/pages/IntakePage'
 import { useAuth } from '@/auth/AuthContext'
+import { EcgPage } from '@/ecg/EcgPage'
 
 // Three surfaces: /dashboard for clinicians reviewing anyone, /my-health for a
 // patient reading their own record, and /entry — the same 48-field form for all
@@ -63,6 +64,14 @@ function App() {
             element={
               <RequireAuth roles={['patient']}>
                 <MyHealthPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/ecg"
+            element={
+              <RequireAuth roles={['clinician', 'staff', 'admin']}>
+                <EcgPage />
               </RequireAuth>
             }
           />
