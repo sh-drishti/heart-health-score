@@ -197,10 +197,7 @@ export function ReviewPage() {
               <tr className="text-left">
                 <th className="w-9" />
                 <th className="px-3 py-2.5 font-medium text-xs uppercase tracking-wider text-muted-foreground">
-                  Name
-                </th>
-                <th className="px-3 py-2.5 font-medium text-xs uppercase tracking-wider text-muted-foreground">
-                  Employee code
+                  Code
                 </th>
                 <th className="px-3 py-2.5 font-medium text-xs uppercase tracking-wider text-muted-foreground">
                   Unknown
@@ -215,13 +212,13 @@ export function ReviewPage() {
             </thead>
             <tbody>
               {review.submissions.map((s) => {
-                const expanded = open === s.employee_code
+                const expanded = open === s.code
                 const unknowns = countUnknown(s, allFields)
 
                 return (
-                  <Fragment key={s.employee_code}>
+                  <Fragment key={s.code}>
                     <tr
-                      onClick={() => setOpen(expanded ? null : s.employee_code)}
+                      onClick={() => setOpen(expanded ? null : s.code)}
                       className="border-t cursor-pointer hover:bg-muted/30"
                     >
                       <td className="pl-3 text-muted-foreground">
@@ -231,9 +228,8 @@ export function ReviewPage() {
                           <ChevronRight className="size-4" />
                         )}
                       </td>
-                      <td className="px-3 py-2.5 font-medium">{s.full_name}</td>
-                      <td className="px-3 py-2.5 font-mono text-xs">
-                        {s.employee_code}
+                      <td className="px-3 py-2.5 font-mono text-[13px] font-medium">
+                        {s.code}
                       </td>
                       <td className="px-3 py-2.5 tabular-nums text-muted-foreground">
                         {unknowns} / {allFields.length}
@@ -253,7 +249,7 @@ export function ReviewPage() {
 
                     {expanded && (
                       <tr className="border-t bg-muted/20">
-                        <td colSpan={6} className="px-5 py-5">
+                        <td colSpan={5} className="px-5 py-5">
                           {review.sections.map((section) => (
                             <div key={section.section} className="mb-5 last:mb-0">
                               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
@@ -291,7 +287,7 @@ export function ReviewPage() {
                             </div>
                           ))}
 
-                          {(s.answers._bmi || s.answers._whr) && (
+                          {(s.answers._bmi || s.answers._whr || s.answers._pack_years) && (
                             <div className="mb-5">
                               <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mb-2">
                                 Calculated
@@ -313,6 +309,14 @@ export function ReviewPage() {
                                     <dt className="text-muted-foreground">Waist-hip ratio</dt>
                                     <dd className="font-medium tabular-nums">
                                       {answerText(s.answers._whr)}
+                                    </dd>
+                                  </div>
+                                )}
+                                {s.answers._pack_years && (
+                                  <div className="flex justify-between gap-4 border-b border-border/40 py-1">
+                                    <dt className="text-muted-foreground">Pack-years</dt>
+                                    <dd className="font-medium tabular-nums">
+                                      {answerText(s.answers._pack_years)}
                                     </dd>
                                   </div>
                                 )}

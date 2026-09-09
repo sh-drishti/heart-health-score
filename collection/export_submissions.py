@@ -33,11 +33,14 @@ from collection.store import _collection
 # BMI and waist-hip ratio are computed from the measurements rather than asked
 # for, so they are not in FIELDS and need naming here. Marked "calculated" so
 # nobody mistakes them for something the person typed.
-DERIVED = [("_bmi", "BMI (calculated)"), ("_whr", "Waist-Hip Ratio (calculated)")]
+DERIVED = [
+    ("_bmi", "BMI (calculated)"),
+    ("_whr", "Waist-Hip Ratio (calculated)"),
+    ("_pack_years", "Pack-Years (calculated)"),
+]
 
 COLUMNS = [
-    "Full Name",
-    "Company Employee Code",
+    "Code",
     "Collection Date",
     *[field["label"] for field in FIELDS],
     *[label for _, label in DERIVED],
@@ -62,14 +65,13 @@ def _cell(answer: dict[str, Any] | None) -> str:
 def rows() -> list[dict[str, str]]:
     out = []
 
-    for doc in _collection().find({}).sort("employee_code", 1):
+    for doc in _collection().find({}).sort("code", 1):
         answers = doc.get("answers", {})
         created = doc.get("created_at")
         updated = doc.get("updated_at")
 
         row = {
-            "Full Name": doc.get("full_name", ""),
-            "Company Employee Code": doc.get("employee_code", ""),
+            "Code": doc.get("code", ""),
             "Collection Date": created.date().isoformat() if created else "",
             "Notes": _cell(answers.get("_notes")),
             "Last Updated Local": updated.isoformat() if updated else "",

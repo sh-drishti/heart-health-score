@@ -28,18 +28,33 @@ export interface FieldDef {
   kind: 'number' | 'choice' | 'text'
   unit: string
   description: string
-  /** 'self' — answerable from your own knowledge. 'report' — copied off a lab
-   *  or scan result. */
-  group: 'self' | 'report'
+  placeholder: string
   choices?: string[]
   min?: number
   max?: number
   depends_on?: DependsOn
 }
 
+export type Accent =
+  | 'sky'
+  | 'amber'
+  | 'emerald'
+  | 'violet'
+  | 'rose'
+  | 'indigo'
+  | 'teal'
+
 export interface SectionDef {
   section: string
+  /** 'self' — answerable from your own knowledge. 'report' — copied off a lab
+   *  or scan result. */
   group: 'self' | 'report'
+  accent: Accent
+  /** Shown under the section heading, in plain language. */
+  info: string
+  /** Optional sections may be left entirely blank; the server stores those
+   *  answers exactly as an explicit Unknown. */
+  optional: boolean
   fields: FieldDef[]
 }
 
@@ -47,6 +62,7 @@ export interface Schema {
   sections: SectionDef[]
   groups: Record<string, string>
   field_count: number
+  required_count: number
 }
 
 export interface FieldError {
@@ -103,7 +119,7 @@ export interface AnswerValue {
 }
 
 export interface SubmissionResult {
-  employee_code: string
+  code: string
   created: boolean
   updated_at: string
 }
@@ -111,8 +127,7 @@ export interface SubmissionResult {
 export async function submit(
   accessCode: string,
   body: {
-    full_name: string
-    employee_code: string
+    code: string
     answers: Record<string, AnswerValue>
     notes: string
   },
@@ -138,8 +153,7 @@ export interface StoredAnswer {
 }
 
 export interface Submission {
-  employee_code: string
-  full_name: string
+  code: string
   revision: number
   created_at: string
   updated_at: string

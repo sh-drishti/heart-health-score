@@ -29,7 +29,7 @@ from fastapi import APIRouter, Header, HTTPException, Request, Response, status
 from pydantic import BaseModel, Field
 
 from collection import store
-from collection.schema import FIELDS_BY_KEY, schema
+from collection.schema import FIELDS_BY_KEY, OPTIONAL_KEYS, schema
 
 router = APIRouter(prefix="/api/collect", tags=["parameter collection"])
 
@@ -84,8 +84,12 @@ class Answer(BaseModel):
 
 
 class SubmissionIn(BaseModel):
-    full_name: str = Field(min_length=1, max_length=120)
-    employee_code: str = Field(min_length=1, max_length=60)
+    """Identity is one code, mailed to the participant. No name is collected —
+    a form asking for health answers should carry as little identifying detail
+    as it can, and the code is enough to attach a correction to the right
+    record."""
+
+    code: str = Field(min_length=1, max_length=60)
     answers: dict[str, Answer]
     notes: str = Field(default="", max_length=2000)
 
@@ -109,6 +113,21 @@ def validate_submission(answers: dict[str, Answer]) -> tuple[dict, list[dict]]:
 
     for key, field in FIELDS_BY_KEY.items():
         answer = answers.get(key)
+
+        blank = answer is None or (
+            not answer.unknown
+            and (
+                answer.value is None
+                or (isinstance(answer.value, str) and not answer.value.strip())
+            )
+        )
+
+        # A field in an optional section may simply be left alone. It is stored
+        # exactly as an explicit Unknown would be, so the data means the same
+        # thing either way — only the number of clicks changed.
+        if blank and key in OPTIONAL_KEYS:
+            cleaned[key] = {"value": None, "unknown": True}
+            continue
 
         if answer is None:
             fail(key, f"{field['label']} is required — give a value or mark Unknown.")
@@ -223,6 +242,15 @@ def derive(cleaned: dict) -> dict:
         except (TypeError, ValueError):
             return None
 
+    # Pack-years, from the two questions people can actually answer about
+    # themselves. Twenty cigarettes to the pack is the standard definition.
+    cigarettes, years = number("cigarettes_per_day"), number("years_smoked")
+    if cigarettes is not None and years is not None:
+        cleaned["_pack_years"] = {
+            "value": round((cigarettes / 20.0) * years, 2),
+            "unknown": False,
+        }
+
     height, weight = number("height_cm"), number("weight_kg")
     if height and weight and height > 0:
         cleaned["_bmi"] = {"value": round(weight / (height / 100) ** 2, 1), "unknown": False}
@@ -234,10 +262,10 @@ def derive(cleaned: dict) -> dict:
     return cleaned
 
 
-def normalise_employee_code(code: str) -> str:
-    """Codes look like D220098. Upper-cased and stripped of spaces so that
-    ` d220098 ` and `D220098` are one person, not two — this is the key the
-    record is stored under, so drift here silently duplicates people."""
+def normalise_code(code: str) -> str:
+    """Upper-cased and stripped of spaces, so ` d220098 ` and `D220098` are one
+    person rather than two — this is the key the record is stored under, and
+    drift here silently duplicates people."""
 
     return "".join(code.split()).upper()
 
@@ -282,8 +310,7 @@ def create_submission(
         cleaned["_notes"] = {"value": payload.notes.strip(), "unknown": False}
 
     return store.save_submission(
-        employee_code=normalise_employee_code(payload.employee_code),
-        full_name=payload.full_name,
+        code=normalise_code(payload.code),
         answers=cleaned,
         submitted_from=request.headers.get("x-forwarded-for", "") or "",
     )
@@ -302,8 +329,7 @@ def list_submissions(x_admin_code: Optional[str] = Header(default=None)):
 
     submissions = [
         {
-            "employee_code": doc.get("employee_code", ""),
-            "full_name": doc.get("full_name", ""),
+            "code": doc.get("code", ""),
             "revision": doc.get("revision", 1),
             "created_at": doc["created_at"].isoformat() if doc.get("created_at") else "",
             "updated_at": doc["updated_at"].isoformat() if doc.get("updated_at") else "",
