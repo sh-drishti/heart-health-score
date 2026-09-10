@@ -37,6 +37,12 @@ COPY data/ data/
 
 COPY backend/ backend/
 
+# The additional-parameter collection programme. Its own top-level package, so
+# it needs its own COPY — `COPY *.py ./` above matches root modules only, and
+# leaving this out builds an image that starts, then dies on the import in
+# backend/main.py. Delete this line with the programme.
+COPY collection/ collection/
+
 # Drop privileges. Nothing in the image needs to be written at run time.
 RUN useradd --create-home --shell /usr/sbin/nologin hhs \
     && chown -R hhs:hhs /app

@@ -622,3 +622,10 @@ def my_note(patient_id: str = Depends(auth.current_patient_id)):
 
 
 app.include_router(api)
+
+# Additional-parameter collection programme — temporary, self-contained, and
+# mounted outside /api/v1 because it has its own lifecycle. Delete this block
+# and the collection/ package to remove the programme entirely.
+from collection.routes import router as collection_router  # noqa: E402
+
+app.include_router(collection_router)
