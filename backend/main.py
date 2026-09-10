@@ -623,6 +623,13 @@ def my_note(patient_id: str = Depends(auth.current_patient_id)):
 
 app.include_router(api)
 
+# Additional-parameter collection programme — temporary, self-contained, and
+# mounted outside /api/v1 because it has its own lifecycle. Delete this block
+# and the collection/ package to remove the programme entirely.
+from collection.routes import router as collection_router  # noqa: E402
+
+app.include_router(collection_router)
+
 # ECG interpretation — standalone, reads and writes no patient record. Its own
 # package so the model artefact and its dependencies stay out of the clinical
 # code path; the model is lazy-loaded, so importing this costs nothing until an
