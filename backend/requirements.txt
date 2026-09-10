@@ -25,3 +25,13 @@ numpy==2.5.1
 # Mongo + config
 pymongo==4.17.0
 python-dotenv==1.2.2
+
+# ECG interpretation (see ecg/). The model is a MultiOutputClassifier over
+# XGBoost pipelines, so it needs the libraries that pickled it. These are the
+# heaviest dependencies in the image by a wide margin — roughly 200MB of RSS
+# once the model is loaded — which is why ecg/engine.py loads it lazily rather
+# than at startup.
+xgboost==3.4.1
+scikit-learn==1.9.0
+scipy==1.18.0
+joblib==1.5.3

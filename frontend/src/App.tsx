@@ -11,6 +11,7 @@ import { AdminPage } from '@/pages/AdminPage'
 import { MyHealthPage } from '@/pages/MyHealthPage'
 import { IntakePage } from '@/pages/IntakePage'
 import { useAuth } from '@/auth/AuthContext'
+import { EcgPage } from '@/ecg/EcgPage'
 // Temporary: the additional-parameter collection programme. Delete this import,
 // the /collect route below, and src/collection/ to remove it.
 import { CollectPage } from '@/collection/CollectPage'
@@ -69,6 +70,14 @@ function App() {
             element={
               <RequireAuth roles={['patient']}>
                 <MyHealthPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/ecg"
+            element={
+              <RequireAuth roles={['clinician', 'staff', 'admin']}>
+                <EcgPage />
               </RequireAuth>
             }
           />

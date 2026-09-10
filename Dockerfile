@@ -37,11 +37,15 @@ COPY data/ data/
 
 COPY backend/ backend/
 
-# The additional-parameter collection programme. Its own top-level package, so
-# it needs its own COPY — `COPY *.py ./` above matches root modules only, and
-# leaving this out builds an image that starts, then dies on the import in
-# backend/main.py. Delete this line with the programme.
+# Two more top-level packages. Each needs its own COPY — `COPY *.py ./` above
+# matches root modules only, and leaving one out builds an image that starts
+# and then dies on its import in backend/main.py.
+
+# The additional-parameter collection programme. Delete with the programme.
 COPY collection/ collection/
+
+# ECG interpretation, including the 2.4MB model artefact under ecg/models/.
+COPY ecg/ ecg/
 
 # Drop privileges. Nothing in the image needs to be written at run time.
 RUN useradd --create-home --shell /usr/sbin/nologin hhs \
