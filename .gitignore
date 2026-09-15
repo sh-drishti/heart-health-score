@@ -8,3 +8,10 @@ venv
 
 # Scratch space for files handed over by other people, not part of the build.
 temp/
+
+# Expo
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/android/
+mobile/ios/

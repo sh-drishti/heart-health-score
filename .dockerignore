@@ -18,3 +18,12 @@ frontend/dist
 
 .claude
 .agents
+
+# The Expo app. Self-contained and never part of any image — but its install
+# directories are large, and the bare `node_modules` entry above does not match
+# nested paths (which is why frontend/node_modules is listed separately).
+mobile/node_modules
+mobile/.expo
+mobile/android
+mobile/ios
+mobile/dist
