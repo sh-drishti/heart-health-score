@@ -29,6 +29,21 @@ const REFRESH_KEY = 'hhs.refresh_token';
 
 export type Role = 'admin' | 'clinician' | 'staff' | 'patient';
 
+/**
+ * Who this app is for.
+ *
+ * Every screen reads /me/*, which resolves the caller's own record from their
+ * token and returns 403 to anyone else — so a clinician can sign in
+ * successfully and then find that nothing loads.
+ *
+ * This lives here rather than in client.ts because both entry points need it:
+ * signing in, and restoring a stored session on launch. A token issued before
+ * this rule existed is still in some keychain somewhere.
+ */
+export const ALLOWED_ROLES: readonly Role[] = ['patient'];
+
+export const isAllowedRole = (role: Role) => ALLOWED_ROLES.includes(role);
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -176,6 +191,15 @@ async function doRefresh(): Promise<boolean> {
 export async function restore(): Promise<AuthUser | null> {
   const token = await readRefresh();
   if (!token) return null;
+
   await refreshSession();
+
+  // A stored token may predate the role rule, or belong to an account whose
+  // role has since changed. Either way it must not open an app it cannot use.
+  if (currentUser && !isAllowedRole(currentUser.role)) {
+    await clearSession();
+    return null;
+  }
+
   return currentUser;
 }

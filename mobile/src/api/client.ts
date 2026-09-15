@@ -11,6 +11,7 @@ import {
   clearSession,
   getAccessToken,
   refreshSession,
+  isAllowedRole,
   setSession,
   type AuthUser,
   type TokenPair,
@@ -118,8 +119,34 @@ export async function signIn(email: string, password: string): Promise<AuthUser>
   }
 
   const pair = (await res.json()) as TokenPair;
+
+  if (!isAllowedRole(pair.user.role)) {
+    // The credentials were right and the server issued tokens, so revoke them
+    // rather than leaving a usable session stored for an app this account
+    // cannot use.
+    await revoke(pair.refresh_token);
+    throw new ApiError(
+      403,
+      `This app is for patients. The ${pair.user.role} dashboard is on the web.`,
+    );
+  }
+
   await setSession(pair);
   return pair.user;
+}
+
+/** Best-effort server-side revocation. Used when a session is discarded before
+ *  it is ever stored, so there is no access token to authenticate with. */
+async function revoke(refreshToken: string): Promise<void> {
+  try {
+    await fetch(apiUrl('/auth/logout'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+  } catch {
+    // The token expires on its own. Not worth surfacing.
+  }
 }
 
 export async function signOut(): Promise<void> {
