@@ -1,3 +1,13 @@
+import {
+  Newsreader_500Medium,
+  Newsreader_600SemiBold,
+} from '@expo-google-fonts/newsreader';
+import {
+  PlusJakartaSans_500Medium,
+  PlusJakartaSans_600SemiBold,
+  PlusJakartaSans_700Bold,
+} from '@expo-google-fonts/plus-jakarta-sans';
+import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -14,12 +24,14 @@ SplashScreen.preventAutoHideAsync();
  * Without this the app renders the sign-in screen for a moment and then jumps
  * to the dashboard, which reads as a bug to anyone who was already signed in.
  */
-function SplashController() {
+function SplashController({ fontsReady }: { fontsReady: boolean }) {
   const { loading } = useSession();
 
   useEffect(() => {
-    if (!loading) SplashScreen.hideAsync();
-  }, [loading]);
+    // Both, not either: revealing the app before the fonts land shows a frame
+    // of system-font fallback and then reflows, which is worse than waiting.
+    if (!loading && fontsReady) SplashScreen.hideAsync();
+  }, [loading, fontsReady]);
 
   return null;
 }
@@ -46,12 +58,24 @@ function RootNavigator() {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
+  const [fontsLoaded, fontError] = useFonts({
+    Newsreader_500Medium,
+    Newsreader_600SemiBold,
+    PlusJakartaSans_500Medium,
+    PlusJakartaSans_600SemiBold,
+    PlusJakartaSans_700Bold,
+  });
+
+  // A font that fails to load must not hold the app hostage — fall through to
+  // the system face rather than showing a splash screen forever.
+  const fontsReady = fontsLoaded || fontError !== null;
+
   return (
     <SessionProvider>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <SplashController />
+        <SplashController fontsReady={fontsReady} />
         <AnimatedSplashOverlay />
-        <RootNavigator />
+        {fontsReady ? <RootNavigator /> : null}
       </ThemeProvider>
     </SessionProvider>
   );

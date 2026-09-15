@@ -1,6 +1,6 @@
 import { Platform, StyleSheet, Text, type TextProps } from 'react-native';
 
-import { Fonts, ThemeColor } from '@/constants/theme';
+import { FontFamily, Fonts, ThemeColor } from '@/constants/theme';
 import { useTheme } from '@/hooks/use-theme';
 
 export type ThemedTextProps = TextProps & {
@@ -21,7 +21,7 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
         type === 'smallBold' && styles.smallBold,
         type === 'subtitle' && styles.subtitle,
         type === 'link' && styles.link,
-        type === 'linkPrimary' && styles.linkPrimary,
+        type === 'linkPrimary' && [styles.linkPrimary, { color: theme.primary }],
         type === 'code' && styles.code,
         style,
       ]}
@@ -31,43 +31,49 @@ export function ThemedText({ style, type = 'default', themeColor, ...rest }: The
 }
 
 const styles = StyleSheet.create({
-  small: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 500,
-  },
-  smallBold: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: 700,
-  },
-  default: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: 500,
-  },
+  // Newsreader carries headings and the score; Plus Jakarta Sans does the
+  // reading. Two families with clearly different jobs beats one family doing
+  // both at different weights.
   title: {
-    fontSize: 48,
-    fontWeight: 600,
-    lineHeight: 52,
+    fontFamily: FontFamily.display,
+    fontSize: 34,
+    lineHeight: 40,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    fontSize: 32,
-    lineHeight: 44,
-    fontWeight: 600,
+    fontFamily: FontFamily.displayMedium,
+    fontSize: 24,
+    lineHeight: 30,
+    letterSpacing: -0.2,
+  },
+  default: {
+    fontFamily: FontFamily.body,
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  small: {
+    fontFamily: FontFamily.body,
+    fontSize: 13.5,
+    lineHeight: 19,
+  },
+  smallBold: {
+    fontFamily: FontFamily.bodyBold,
+    fontSize: 13.5,
+    lineHeight: 19,
   },
   link: {
-    lineHeight: 30,
+    fontFamily: FontFamily.bodySemi,
     fontSize: 14,
+    lineHeight: 22,
   },
   linkPrimary: {
-    lineHeight: 30,
+    fontFamily: FontFamily.bodySemi,
     fontSize: 14,
-    color: '#3c87f7',
+    lineHeight: 22,
   },
   code: {
     fontFamily: Fonts.mono,
-    fontWeight: Platform.select({ android: 700 }) ?? 500,
-    fontSize: 12,
+    fontWeight: Platform.select({ android: '700' }) ?? '500',
+    fontSize: 12.5,
   },
 });

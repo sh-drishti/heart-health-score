@@ -7,7 +7,6 @@ import {
   ScrollView,
   StyleSheet,
   TextInput,
-  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,12 +14,12 @@ import { ApiError } from '@/api/client';
 import { useSession } from '@/auth/ctx';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import { Colors, Spacing } from '@/constants/theme';
+import { Radius, Spacing } from '@/constants/theme';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function SignIn() {
   const { signIn } = useSession();
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'dark' ? 'dark' : 'light'];
+  const theme = useTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,7 +72,7 @@ export default function SignIn() {
                 value={email}
                 onChangeText={setEmail}
                 placeholder="you@example.com"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={theme.textSecondary}
                 autoCapitalize="none"
                 autoCorrect={false}
                 autoComplete="email"
@@ -83,7 +82,7 @@ export default function SignIn() {
                 editable={!busy}
                 style={[
                   styles.input,
-                  { color: colors.text, backgroundColor: colors.backgroundElement },
+                  { color: theme.text, backgroundColor: theme.backgroundElement },
                 ]}
               />
 
@@ -94,7 +93,7 @@ export default function SignIn() {
                 value={password}
                 onChangeText={setPassword}
                 placeholder="••••••••"
-                placeholderTextColor={colors.textSecondary}
+                placeholderTextColor={theme.textSecondary}
                 secureTextEntry
                 autoCapitalize="none"
                 autoComplete="current-password"
@@ -103,12 +102,12 @@ export default function SignIn() {
                 editable={!busy}
                 style={[
                   styles.input,
-                  { color: colors.text, backgroundColor: colors.backgroundElement },
+                  { color: theme.text, backgroundColor: theme.backgroundElement },
                 ]}
               />
 
               {error ? (
-                <ThemedText type="small" style={styles.error}>
+                <ThemedText type="small" themeColor="error" style={styles.error}>
                   {error}
                 </ThemedText>
               ) : null}
@@ -118,12 +117,12 @@ export default function SignIn() {
                 disabled={disabled}
                 style={({ pressed }) => [
                   styles.button,
-                  { backgroundColor: colors.text, opacity: disabled ? 0.4 : pressed ? 0.8 : 1 },
+                  { backgroundColor: theme.primary, opacity: disabled ? 0.45 : pressed ? 0.85 : 1 },
                 ]}>
                 {busy ? (
-                  <ActivityIndicator color={colors.background} />
+                  <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <ThemedText style={[styles.buttonLabel, { color: colors.background }]}>
+                  <ThemedText style={[styles.buttonLabel, { color: '#FFFFFF' }]}>
                     Sign in
                   </ThemedText>
                 )}
@@ -151,20 +150,20 @@ const styles = StyleSheet.create({
   subtitle: { marginBottom: 24 },
   label: { marginTop: 12 },
   input: {
-    borderRadius: 10,
+    borderRadius: Radius.md,
     paddingHorizontal: 14,
     paddingVertical: 12,
     fontSize: 16,
   },
-  error: { marginTop: 12, color: '#D92D20' },
+  error: { marginTop: 12 },
   button: {
     marginTop: 24,
-    borderRadius: 10,
+    borderRadius: Radius.md,
     paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 48,
   },
-  buttonLabel: { fontWeight: '600', fontSize: 16 },
+  buttonLabel: { fontSize: 16 },
   footnote: { marginTop: 24, opacity: 0.7 },
 });
