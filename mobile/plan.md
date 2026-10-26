@@ -1,5 +1,8 @@
 # Heart Health Score — mobile app
 
+> **On hold since 2026-10-26** — see `README.md`. Do not resume this plan
+> without checking that the work is wanted again.
+
 Expo SDK 57 · React Native 0.86 · expo-router · TypeScript
 
 This document is the approach, not a specification. It records decisions and the
