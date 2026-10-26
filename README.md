@@ -249,6 +249,7 @@ brackets.
 | `GET /api/v1/me/dashboard` · `me/monitoring` · `me/note` | The caller's own record *[patient]* |
 | `GET /api/v1/me/intake/prefill` | Last submission, measurement ages advanced, for a repeat visit *[patient]* |
 | `POST /api/v1/me/encounters` | Record your own encounter; ids assigned server-side *[patient]* |
+| `GET` · `PUT` · `PATCH /api/v1/me/profile` | Onboarding profile: sex, date of birth, height, weight, sleep, activity, vitals. `profile` is `null` until set; `age` and `bmi` are derived; `name` updates the account *[patient]* |
 
 Interactive docs: http://localhost:8000/docs (FastAPI Swagger UI)
 

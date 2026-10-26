@@ -12,6 +12,7 @@ FastAPI wrapper around the existing Python HHS engine. No scoring logic lives he
 | `auth.py` | `/auth/*` routes plus the dependencies every other route is guarded by (`current_user`, `require_role`, `current_patient_id`). |
 | `service.py` | Dashboard bundle builder. Loads patient (CSV or MongoDB), runs `calculate_hhs` + `calculate_patient_severity`, sanitizes to JSON-safe output. |
 | `param_severity.py` | Per-parameter severity for the dashboard badges, taken from the engine's own `sev_*` functions. Replaced the root `severity.py`, which banded values from a spreadsheet and misread every risk threshold — see the module docstring. |
+| `profiles.py` | The `patient_profiles` collection: what the app's onboarding screens collect. Never scored and never shown to clinicians. |
 | `payload_convert.py` | MongoDB encounter payload → patient dict. Returns plain dicts for clean serialization. |
 | `requirements.txt` | The complete dependency set for the API: `fastapi`, `uvicorn[standard]`, `pyjwt`, `bcrypt`, `pandas`, `numpy`, `openpyxl`, `pymongo`, `python-dotenv`. |
 
@@ -84,6 +85,9 @@ All routes are under `/api/v1`. `/api/health` is the only exception.
 | GET | `/api/v1/me/note` | patient | Own review note, read-only |
 | GET | `/api/v1/me/intake/prefill` | patient | Last submission with measurement ages advanced, for a repeat visit. `null` on a first visit |
 | POST | `/api/v1/me/encounters` | patient | Record own encounter; `patient_id` and `visit_id` in the body are ignored and assigned server-side |
+| GET | `/api/v1/me/profile` | patient | Own onboarding profile, or `profile: null` before onboarding. `age` and `bmi` are derived on read |
+| PUT | `/api/v1/me/profile` | patient | Create or replace the whole profile. `name`, if sent, renames the account |
+| PATCH | `/api/v1/me/profile` | patient | Change some fields; `null` clears a skippable one. `404` before the first PUT |
 
 ### Dashboard bundle response
 

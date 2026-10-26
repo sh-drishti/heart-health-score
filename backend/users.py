@@ -189,6 +189,20 @@ def set_password(user_id: str, password: str) -> Optional[Dict[str, Any]]:
     return user
 
 
+def set_name(user_id: Any, name: str) -> str:
+    """
+    Rename an account. The patient profile edits this rather than storing a name
+    of its own, so a person has exactly one. Returns the stored name.
+    """
+
+    name = name.strip()
+    if not name:
+        raise ValueError("Name cannot be blank")
+
+    _db()[USERS].update_one({"_id": user_id}, {"$set": {"name": name}})
+    return name
+
+
 def _new_patient_id() -> str:
     """
     Mint an unused patient_id for a self-registering user.
