@@ -33,8 +33,8 @@ COLLECTION = "patient_profiles"
 BiologicalSex = Literal["Male", "Female", "Intersex / other", "Unknown"]
 
 # Stable codes rather than the app's display text, so rewording a button never
-# changes what is stored. Each is recorded alongside an optional exact figure:
-# someone may pick a band, type a number, or both.
+# changes what is stored. The app offers only these options, with no free-text
+# hours: one code per question, or null if the screen was skipped.
 SleepOption = Literal["under_6", "6_to_8", "8_to_10", "over_10"]
 ActivityOption = Literal[
     "mostly_sitting", "often_standing", "regularly_walking", "physically_intense"
@@ -65,11 +65,7 @@ class ProfileIn(BaseModel):
     height_cm: float = Field(ge=50, le=250)
 
     sleep_option: Optional[SleepOption] = None
-    sleep_hours: Optional[float] = Field(
-        default=None, ge=0, le=24, description="Hours of sleep per night."
-    )
     activity_option: Optional[ActivityOption] = None
-    activity_hours_per_day: Optional[float] = Field(default=None, ge=0, le=24)
 
     sbp: Optional[int] = Field(default=None, ge=70, le=260, description="Systolic, mmHg.")
     dbp: Optional[int] = Field(default=None, ge=40, le=160, description="Diastolic, mmHg.")
@@ -108,9 +104,7 @@ class ProfilePatch(BaseModel):
     weight_kg: Optional[float] = None
     height_cm: Optional[float] = None
     sleep_option: Optional[SleepOption] = None
-    sleep_hours: Optional[float] = None
     activity_option: Optional[ActivityOption] = None
-    activity_hours_per_day: Optional[float] = None
     sbp: Optional[int] = None
     dbp: Optional[int] = None
     resting_hr: Optional[int] = None
@@ -159,9 +153,7 @@ def _public(doc: Dict[str, Any], name: str) -> Dict[str, Any]:
         "height_cm": doc["height_cm"],
         "bmi": _bmi(doc["weight_kg"], doc["height_cm"]),
         "sleep_option": doc.get("sleep_option"),
-        "sleep_hours": doc.get("sleep_hours"),
         "activity_option": doc.get("activity_option"),
-        "activity_hours_per_day": doc.get("activity_hours_per_day"),
         "sbp": doc.get("sbp"),
         "dbp": doc.get("dbp"),
         "resting_hr": doc.get("resting_hr"),
