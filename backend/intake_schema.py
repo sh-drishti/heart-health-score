@@ -24,6 +24,12 @@ from typing import Any, Dict, List
 AVAILABILITY_OPTIONS = ["Available", "Unknown", "Not measured"]
 YES_NO_OPTIONS = ["Unknown", "No", "Yes"]
 
+# The call sites below stay a line-for-line transcription of the Streamlit form,
+# sample values included, so they can be diffed against it. Those samples are
+# the demo's example patient, not defaults: every scored field is served
+# unanswered, so nothing is recorded that nobody entered.
+UNANSWERED = "Unknown"
+
 
 def _num(
     key: str,
@@ -47,9 +53,9 @@ def _num(
         "unit": unit,
         "min": min_value,
         "max": max_value,
-        "default": default,
+        "default": None,
         "step": step,
-        "default_status": default_status,
+        "default_status": UNANSWERED if default_status == "Available" else default_status,
         "months_default": months_default,
         "months_max": months_max,
     }
@@ -63,7 +69,7 @@ def _select(key: str, domain: str, label: str, options: List[str], default: str)
         "label": label,
         "unit": "",
         "options": options,
-        "default": default,
+        "default": UNANSWERED,
     }
 
 
@@ -75,7 +81,7 @@ def _yes_no(key: str, domain: str, label: str, default: str = "Unknown") -> Dict
         "label": label,
         "unit": "",
         "options": YES_NO_OPTIONS,
-        "default": default,
+        "default": UNANSWERED,
     }
 
 
