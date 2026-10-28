@@ -22,6 +22,8 @@ interface Props {
 // Availability + value + months-old, matching number_input_field in the
 // Streamlit form: a non-Available status hides the value entirely rather than
 // storing a zero, because the engine treats missing and normal differently.
+// The value starts empty, never at a sample number; Available with no value is
+// scored as Unknown.
 function NumberField({
   field,
   entry,
@@ -30,9 +32,10 @@ function NumberField({
   onChange,
   slider,
 }: Props & { slider?: boolean }) {
-  const status = entry.status ?? field.default_status ?? 'Available'
+  const status = entry.status ?? field.default_status ?? 'Unknown'
   const unit = unitOverride ?? field.unit ?? ''
-  const value = entry.value ?? field.default ?? 0
+  const value = entry.value
+  const hasValue = value !== undefined && value !== null && value !== ''
   const months = entry.months_old ?? field.months_default ?? 0
 
   return (
@@ -69,12 +72,12 @@ function NumberField({
                   min={field.min}
                   max={field.max}
                   step={field.step}
-                  value={Number(value)}
+                  value={hasValue ? Number(value) : Number(field.min ?? 0)}
                   onChange={(e) => onChange({ ...entry, value: Number(e.target.value) })}
-                  className="flex-1 accent-primary cursor-pointer"
+                  className={cn('flex-1 accent-primary cursor-pointer', !hasValue && 'opacity-40')}
                 />
                 <span className="text-sm font-semibold tabular-nums w-10 text-right">
-                  {Number(value)}
+                  {hasValue ? Number(value) : '—'}
                 </span>
               </div>
             ) : (
@@ -83,8 +86,13 @@ function NumberField({
                 min={field.min}
                 max={field.max}
                 step={field.step}
-                value={Number(value)}
-                onChange={(e) => onChange({ ...entry, value: Number(e.target.value) })}
+                value={hasValue ? Number(value) : ''}
+                onChange={(e) =>
+                  onChange({
+                    ...entry,
+                    value: e.target.value === '' ? undefined : Number(e.target.value),
+                  })
+                }
                 className="h-8"
               />
             )}

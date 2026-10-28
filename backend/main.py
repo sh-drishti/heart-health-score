@@ -443,7 +443,7 @@ def intake_score(submission: SubmissionIn, _: Dict[str, Any] = AnyUser):
     to leak whatever `patient_id` the body happens to carry.
     """
     try:
-        return {"assessment": intake.score(submission.to_submission())}
+        return intake.score(submission.to_submission())
     except Exception as exc:
         raise HTTPException(status_code=422, detail=str(exc))
 

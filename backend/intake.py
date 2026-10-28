@@ -10,7 +10,7 @@ Streamlit widgets:
 Root modules are used as-is. Nothing here re-implements scoring.
 """
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from hhs_v1_2_ui_app import FieldRecord, HHSManualScorer
 from assessment_service import AssessmentService, build_encounter_payload
@@ -28,6 +28,11 @@ def build_fields(submitted: Dict[str, Dict[str, Any]], lpa_unit: str = "mg/dL") 
     - a non-"Available" status stores value None and months_old None
     - categorical/yes_no answers of "Unknown" become status Unknown
     - available categorical/yes_no answers carry months_old 0.0
+
+    A field the submission leaves out, or marks Available without a value, is
+    Unknown. It is never filled from the form's defaults: those were the
+    Streamlit demo's sample patient, and scoring them as if entered made a
+    one-field submission look like a complete, high-confidence record.
     """
 
     fields: Dict[str, FieldRecord] = {}
@@ -40,22 +45,23 @@ def build_fields(submitted: Dict[str, Dict[str, Any]], lpa_unit: str = "mg/dL") 
         unit = lpa_unit if key == "lpa" else definition["unit"]
 
         if widget in ("select", "yes_no"):
-            value = entry.get("value", definition["default"])
+            value = entry.get("value")
             if value is None or str(value) == "Unknown":
                 fields[key] = FieldRecord(domain, label, "Unknown", unit, "Unknown", None)
             else:
                 fields[key] = FieldRecord(domain, label, value, unit, "Available", 0.0)
             continue
 
-        # number / slider: availability select gates the value
-        status = entry.get("status", definition["default_status"])
+        # number / slider: availability select gates the value. A value sent
+        # without a status counts as entered.
+        value = entry.get("value")
+        status = entry.get("status") or ("Available" if value is not None else "Unknown")
+        if status == "Available" and value is None:
+            status = "Unknown"
         if status != "Available":
             fields[key] = FieldRecord(domain, label, None, unit, status, None)
             continue
 
-        value = entry.get("value")
-        if value is None:
-            value = definition["default"]
         months = entry.get("months_old")
         if months is None:
             months = definition["months_default"]
@@ -63,6 +69,16 @@ def build_fields(submitted: Dict[str, Dict[str, Any]], lpa_unit: str = "mg/dL") 
         fields[key] = FieldRecord(domain, label, float(value), unit, "Available", float(months))
 
     return fields
+
+
+def provided_fields(fields: Dict[str, FieldRecord]) -> List[str]:
+    """
+    Keys the submission actually answered. Since nothing is filled from
+    defaults, these are exactly the fields with status Available; everything
+    else was left out, Unknown, or Not measured.
+    """
+
+    return sorted(key for key, record in fields.items() if record.status == "Available")
 
 
 def score(submission: Dict[str, Any]) -> Dict[str, Any]:
@@ -78,7 +94,10 @@ def score(submission: Dict[str, Any]) -> Dict[str, Any]:
         str(visit["biological_sex"]),
         str(lpa_unit),
     )
-    return to_json_safe(scorer.calculate())
+    return {
+        "assessment": to_json_safe(scorer.calculate()),
+        "provided_fields": provided_fields(fields),
+    }
 
 
 def build_payload(submission: Dict[str, Any]) -> Tuple[Dict[str, Any], Dict[str, FieldRecord]]:
@@ -143,7 +162,7 @@ def save(submission: Dict[str, Any], allow_duplicate_visit: bool = False) -> Dic
     already on file and allow_duplicate_visit is False.
     """
 
-    payload, _fields = build_payload(submission)
+    payload, fields = build_payload(submission)
     visit = payload["visit"]
 
     service = AssessmentService()
@@ -162,4 +181,5 @@ def save(submission: Dict[str, Any], allow_duplicate_visit: bool = False) -> Dic
         "encounter_id": saved["encounter_id"],
         "timestamp": saved["timestamp"].isoformat(),
         "assessment": to_json_safe(payload["assessment"]),
+        "provided_fields": provided_fields(fields),
     }
