@@ -1,5 +1,6 @@
 """
-Accounts and sessions in MongoDB: the `users` and `refresh_tokens` collections.
+Accounts and sessions in MongoDB: the `users`, `refresh_tokens` and
+`deleted_accounts` collections.
 
 These are the only collections this project's API owns outright. `patients`,
 `encounters` and `clinical_notes` keep their existing owners (database.py and
@@ -23,6 +24,9 @@ from backend.security import hash_password, hash_refresh_token, refresh_expiry
 
 USERS = "users"
 REFRESH_TOKENS = "refresh_tokens"
+# One record per deleted account: no email or name, only the ids, so the
+# account is gone but its patient_id can never be issued to someone else.
+DELETED_ACCOUNTS = "deleted_accounts"
 
 # admin manages accounts and nothing clinical: least privilege in both
 # directions, so an account administrator cannot read patient records and a
@@ -54,6 +58,7 @@ def ensure_indexes() -> None:
     db[USERS].create_index("patient_id")
     db[REFRESH_TOKENS].create_index("token_hash", unique=True)
     db[REFRESH_TOKENS].create_index("user_id")
+    db[DELETED_ACCOUNTS].create_index("patient_id")
 
 
 # --- Accounts ---------------------------------------------------------------
@@ -165,6 +170,34 @@ def set_active(user_id: str, active: bool) -> Optional[Dict[str, Any]]:
     return user
 
 
+def delete_account(user: Dict[str, Any], deleted_by: str) -> Dict[str, Any]:
+    """
+    Delete an account and its sessions. Nothing else: the patient record,
+    visits, notes and profile stay under the patient_id, so a clinic keeps its
+    records and an admin can link a new account to them later.
+
+    `deleted_by` is "self" or the id of the admin who did it. The record is
+    written before the account is removed, so a failure part-way through can
+    leave a stale record but never a patient_id free to be reissued.
+    """
+
+    db = _db()
+    record = {
+        "user_id": str(user["_id"]),
+        "patient_id": user.get("patient_id"),
+        "role": user.get("role"),
+        "deleted_at": datetime.now(timezone.utc),
+        "deleted_by": deleted_by,
+    }
+    db[DELETED_ACCOUNTS].insert_one(dict(record))
+    sessions = db[REFRESH_TOKENS].delete_many({"user_id": str(user["_id"])}).deleted_count
+    db[USERS].delete_one({"_id": user["_id"]})
+
+    record["deleted_at"] = record["deleted_at"].isoformat()
+    record["sessions_deleted"] = sessions
+    return record
+
+
 def set_password(user_id: str, password: str) -> Optional[Dict[str, Any]]:
     """
     Replace an account's password and end its sessions.
@@ -202,12 +235,16 @@ def _new_patient_id() -> str:
     for _attempt in range(10):
         candidate = f"HHS-U-{secrets.token_hex(4).upper()}"
         # The users collection is the authority on which ids are claimed; the
-        # patients collection also holds clinician-created ids, so check both.
-        if users.find_one({"patient_id": candidate}) is None:
-            from database import patients_collection
+        # patients collection also holds clinician-created ids, and a deleted
+        # account's id stays claimed because its records outlive it.
+        if users.find_one({"patient_id": candidate}) is not None:
+            continue
+        if _db()[DELETED_ACCOUNTS].find_one({"patient_id": candidate}) is not None:
+            continue
+        from database import patients_collection
 
-            if patients_collection.find_one({"patient_id": candidate}) is None:
-                return candidate
+        if patients_collection.find_one({"patient_id": candidate}) is None:
+            return candidate
 
     raise RuntimeError("Could not allocate a patient id; try again")
 

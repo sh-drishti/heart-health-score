@@ -232,10 +232,12 @@ brackets.
 | `POST /api/v1/auth/refresh` | `{refresh_token}` → a new pair; the presented one is revoked |
 | `POST /api/v1/auth/logout` · `logout-all` | Revoke one session · every session |
 | `GET /api/v1/auth/me` | The signed-in account |
+| `DELETE /api/v1/auth/me` | `{password}` → delete your own login and sessions; health records are kept |
 | `POST /api/v1/auth/register` | Open sign-up; always a patient, with a server-issued `patient_id` |
 | `GET` · `POST /api/v1/auth/users` | List · create accounts *[admin]* |
 | `PATCH /api/v1/auth/users/{id}` | Enable or disable an account; disabling revokes its sessions *[admin]* |
 | `POST /api/v1/auth/users/{id}/password` | Set a password and end that account's sessions *[admin]* |
+| `DELETE /api/v1/auth/users/{id}` | Delete an account on request; health records are kept *[admin]* |
 | `GET /api/v1/patients?source=csv\|payload` | List patient IDs *[clinician, staff]* |
 | `GET /api/v1/patients/{id}?source=csv\|payload` | Full dashboard bundle: `{patient, patient_data, assessment}` *[clinician]* |
 | `GET /api/v1/patients/{id}/validation` | Doctor's recorded agreement, or `null` *[clinician]* |

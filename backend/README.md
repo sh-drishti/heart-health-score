@@ -65,11 +65,13 @@ All routes are under `/api/v1`. `/api/health` is the only exception.
 | POST | `/api/v1/auth/logout` | — | Revoke one session |
 | POST | `/api/v1/auth/logout-all` | any | Revoke every session for the caller |
 | GET | `/api/v1/auth/me` | any | The signed-in account |
+| DELETE | `/api/v1/auth/me` | any | `{password}` → delete your own login and sessions. Health records stay under the `patient_id`, which is never reissued. `403` on a wrong password |
 | POST | `/api/v1/auth/register` | — | Open sign-up; always a patient, `patient_id` issued server-side |
 | GET | `/api/v1/auth/users` | admin | List accounts |
 | POST | `/api/v1/auth/users` | admin | Create an account; `409` if the email is taken |
 | PATCH | `/api/v1/auth/users/{id}` | admin | Enable or disable; disabling revokes its sessions. `409` on the last admin or yourself |
 | POST | `/api/v1/auth/users/{id}/password` | admin | Set a password and end that account's sessions |
+| DELETE | `/api/v1/auth/users/{id}` | admin | Delete an account on request, as `DELETE /auth/me` does. `409` on yourself or the last admin |
 | GET | `/api/v1/patients` | clinician, staff | `{"patient_ids": [...]}`, `source=csv\|payload` |
 | GET | `/api/v1/patients/{patient_id}` | clinician | Dashboard bundle (see below), `source=csv\|payload` |
 | POST | `/api/v1/validation` | clinician | Save doctor validation (in-memory, lost on restart) |

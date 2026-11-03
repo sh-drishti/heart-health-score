@@ -70,6 +70,12 @@ class SetPasswordIn(BaseModel):
     password: str = Field(min_length=8)
 
 
+class DeleteAccountIn(BaseModel):
+    """The current password, so an unlocked phone is not enough to delete an account."""
+
+    password: str
+
+
 def _session(user: Dict[str, Any]) -> Dict[str, Any]:
     """Issue a fresh token pair for a user and record the refresh side."""
 
@@ -298,6 +304,43 @@ def logout_all(user: Dict[str, Any] = Depends(current_user)):
     return {"status": "ok", "sessions_revoked": revoked}
 
 
+def _refuse_last_admin(target: Dict[str, Any]) -> None:
+    """Deleting the last admin would leave nobody able to manage accounts."""
+
+    if target.get("role") == "admin" and users.count_active_admins() <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This is the last active admin; promote another before deleting it",
+        )
+
+
+@router.delete(
+    "/auth/me",
+    summary="Delete your own account [any role]",
+    responses={
+        401: {"description": "Missing, malformed, or expired access token."},
+        403: {"description": "Incorrect password."},
+        409: {"description": "The last active admin cannot delete itself."},
+    },
+)
+def delete_me(body: DeleteAccountIn, user: Dict[str, Any] = Depends(current_user)):
+    """
+    Deletes the login and every session, effective immediately: the access
+    token in hand stops working on the next request.
+
+    Health records are kept. The patient record, visits and profile stay under
+    the account's `patient_id`, which is never issued to anyone else.
+    """
+
+    # 403, not 401: the token is fine, and a 401 would make a client refresh it
+    # and retry rather than tell the user their password was wrong.
+    if not verify_password(body.password, user.get("password_hash", "")):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Incorrect password")
+
+    _refuse_last_admin(user)
+    return {"status": "deleted", "account": users.delete_account(user, deleted_by="self")}
+
+
 # --- Account administration -------------------------------------------------
 #
 # Admin only. Clinicians deliberately cannot reach these: being able to read
@@ -385,6 +428,39 @@ def update_account(
 
     updated = users.set_active(user_id, body.active)
     return {"user": users.public_user(updated)}
+
+
+@router.delete(
+    "/auth/users/{user_id}",
+    summary="Delete an account [admin]",
+    responses={
+        401: UNAUTHORIZED,
+        403: ADMIN_ONLY,
+        404: {"description": "No such account."},
+        409: {"description": "Cannot delete yourself here, or the last admin."},
+    },
+)
+def delete_account(user_id: str, admin: Dict[str, Any] = Admin):
+    """
+    For deletion requests that arrive by email. Same effect as `DELETE
+    /auth/me`: the login and its sessions go, the health records stay.
+    """
+
+    target = users.get_by_id(user_id)
+    if target is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No such account")
+
+    if str(target["_id"]) == str(admin["_id"]):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Use DELETE /auth/me to delete your own account",
+        )
+    _refuse_last_admin(target)
+
+    return {
+        "status": "deleted",
+        "account": users.delete_account(target, deleted_by=str(admin["_id"])),
+    }
 
 
 @router.post(
