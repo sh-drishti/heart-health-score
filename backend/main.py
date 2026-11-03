@@ -22,8 +22,9 @@ from contextlib import asynccontextmanager
 from typing import Any, Dict
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Query
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 from backend import (
     auth,
@@ -31,6 +32,7 @@ from backend import (
     intake_schema,
     monitoring,
     notes,
+    profiles,
     self_service,
     service,
     users,
@@ -41,7 +43,7 @@ from backend import (
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """
-    Create the auth indexes on boot.
+    Create the auth and profile indexes on boot.
 
     Tolerates an unreachable database so the service still starts and reports
     the problem per-request, matching how the Mongo-backed modules import lazily.
@@ -49,8 +51,9 @@ async def lifespan(_app: FastAPI):
 
     try:
         users.ensure_indexes()
+        profiles.ensure_indexes()
     except Exception as exc:  # pragma: no cover - depends on the environment
-        print(f"[startup] could not create auth indexes: {exc}", file=sys.stderr)
+        print(f"[startup] could not create indexes: {exc}", file=sys.stderr)
     yield
 
 
@@ -619,6 +622,113 @@ def my_note(patient_id: str = Depends(auth.current_patient_id)):
         raise HTTPException(status_code=502, detail=str(exc))
 
     return {"patient_id": patient_id, "note": saved}
+
+
+# --- Patient profile (onboarding) -------------------------------------------
+#
+# What the app's onboarding screens collect. Not an assessment: nothing here is
+# scored, and nothing here is visible on the clinician routes.
+
+
+def _profile_name(user: Dict[str, Any], requested: Any) -> str:
+    """Rename the account if a name was sent, and return the name to report."""
+
+    if isinstance(requested, str) and requested.strip():
+        return users.set_name(user["_id"], requested)
+    return user.get("name", "")
+
+
+@api.get(
+    "/me/profile",
+    tags=["patient self-service"],
+    summary="The caller's own profile" + roles_note("patient"),
+    **guarded("patient"),
+)
+def my_profile(user: Dict[str, Any] = Depends(auth.require_role("patient"))):
+    """
+    `profile` is null until onboarding has been completed, which is how the app
+    knows to show it. `age` and `bmi` are derived on every read.
+    """
+
+    patient_id = auth.current_patient_id(user)
+    try:
+        saved = profiles.get_profile(patient_id, user.get("name", ""))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "profile": saved}
+
+
+@api.put(
+    "/me/profile",
+    tags=["patient self-service"],
+    summary="Create or replace your profile" + roles_note("patient"),
+    **guarded("patient"),
+)
+def write_my_profile(
+    body: profiles.ProfileIn,
+    user: Dict[str, Any] = Depends(auth.require_role("patient")),
+):
+    """
+    The whole profile, as the onboarding screens submit it. A field left out is
+    stored as null, so send everything the app has.
+
+    `name`, if sent, renames the account rather than being stored here.
+    """
+
+    patient_id = auth.current_patient_id(user)
+    try:
+        name = _profile_name(user, body.name)
+        saved = profiles.save_profile(patient_id, body, name)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "profile": saved}
+
+
+@api.patch(
+    "/me/profile",
+    tags=["patient self-service"],
+    summary="Update part of your profile" + roles_note("patient"),
+    responses={
+        401: UNAUTHORIZED,
+        403: {"description": "Requires: patient."},
+        404: {"description": "No profile yet. Create one with PUT first."},
+        422: {"description": "The profile, with this patch applied, is invalid."},
+    },
+)
+def patch_my_profile(
+    body: profiles.ProfilePatch,
+    user: Dict[str, Any] = Depends(auth.require_role("patient")),
+):
+    """
+    Send only what changed. A field sent as `null` is cleared, which is how a
+    skipped answer is removed; the four required fields cannot be cleared.
+    """
+
+    patient_id = auth.current_patient_id(user)
+    try:
+        merged = profiles.merge_patch(patient_id, body)
+    except profiles.ProfileMissing:
+        raise HTTPException(
+            status_code=404,
+            detail="No profile yet. Create one with PUT /me/profile first.",
+        )
+    except ValidationError as exc:
+        # Raised by our own validation of the merged result rather than by
+        # FastAPI's parsing of the body, so it has to be re-raised as a request
+        # error to come back as the usual 422 instead of a 500.
+        raise RequestValidationError(exc.errors(include_url=False, include_context=False))
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    try:
+        name = _profile_name(user, merged.name)
+        saved = profiles.save_profile(patient_id, merged, name)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=str(exc))
+
+    return {"patient_id": patient_id, "profile": saved}
 
 
 app.include_router(api)
