@@ -1,0 +1,140 @@
+SYNTHETIC HEALTH DATA - PROFILING REPORT
+Input file: C:\Users\drish\Desktop\hhr\hhs-v2\heart-health-score\backend\synthetic_health_connect_30d.csv
+Exploratory screening only; no clinical decisions.
+
+========================================================================
+1. Dataset Overview
+========================================================================
+Rows: 369,634
+Columns: 16
+Unique patients: 50
+Unique record IDs: 369,634
+Duplicate record IDs: 0
+Start timestamp range: 2026-09-01 00:00:00+00:00 to 2026-09-30 23:59:58+00:00
+Missing patient IDs: 0
+Missing record IDs: 0
+
+========================================================================
+2. MISSINGNESS AND SCHEMA
+========================================================================
+Column missingness:
+  patient_id: 0 (0.00%)
+  record_id: 0 (0.00%)
+  record_type: 0 (0.00%)
+  parameter: 0 (0.00%)
+  value: 1,982 (0.54%)
+  unit: 1,871 (0.51%)
+  start_timestamp: 0 (0.00%)
+  end_timestamp: 362,585 (98.09%)
+  source_app: 0 (0.00%)
+  source_device: 0 (0.00%)
+  recorded_timestamp: 141 (0.04%)
+  ingested_timestamp: 0 (0.00%)
+  activity_context: 4,247 (1.15%)
+  data_quality: 0 (0.00%)
+  notes: 366,504 (99.15%)
+  value_numeric: 1,982 (0.54%)
+Record types: 5
+Parameters: 8
+Quality labels: {'valid': 367223, 'questionable': 2300, 'unavailable': 111}
+
+========================================================================
+3. HEART RATE QUALITY
+========================================================================
+Heart-rate rows: 362,585
+Source-labelled valid: 360,441
+Source-labelled questionable: 2,034
+Source-labelled unavailable: 110
+Missing/non-numeric usable values: 0
+Values below 30 bpm: 33
+Values above 220 bpm: 12
+Minimum numeric HR: 0.0
+Maximum numeric HR: 255.0
+Basic screening flagged rows: 2,148
+Rows in exact-content duplicate candidate groups: 794
+Note: duplicate candidates require review; do not automatically delete them.
+
+Heart-rate distribution by context and quality:
+activity_context data_quality  count  median       mean       std  min   max
+        exercise questionable    729   122.0 130.231824 35.744281 31.0 215.0
+        exercise        valid  33494   110.0 111.775303 20.102997 56.0 174.0
+           other questionable    167    85.0  90.586826 24.890905 33.0 180.0
+           other        valid  43846    85.0  85.988733 11.774314 51.0 146.0
+         resting questionable    698    78.0  84.787966 26.514840 30.0 188.0
+         resting        valid 195727    77.0  78.281458 11.276135 44.0 135.0
+        sleeping questionable    204    73.0  79.926471 26.821422 30.0 175.0
+        sleeping        valid  53008    72.0  73.190028 11.335021 44.0 121.0
+         unknown questionable    138    81.5  89.608696 34.229034 30.0 214.0
+         unknown        valid  27862    78.0  80.837413 14.666149 44.0 170.0
+         walking questionable     57   135.0 125.315789 33.707861 32.0 192.0
+         walking        valid   6500    92.0  92.063077 10.912697 58.0 125.0
+
+========================================================================
+4. SAMPLING AND COVERAGE
+========================================================================
+Negative intervals: 0
+Zero-minute intervals: 397
+Intervals > 60 minutes: 1,241
+
+Interval distribution (minutes):
+count    362535.000000
+mean          5.786967
+std          50.619041
+min           0.000000
+5%            0.400000
+25%           2.750000
+50%           4.083333
+75%           5.366667
+95%          10.633333
+max       15830.866667
+
+Lowest coverage patients:
+patient_id  heart_rate_rows  days_with_hr  expected_days_in_dataset  day_coverage_pct        first_hr_timestamp         last_hr_timestamp  median_interval_minutes  p95_interval_minutes  gaps_over_60min  gaps_over_6h  max_gap_hours
+  SYN-P008              280             6                        30         20.000000 2026-09-01 19:17:06+00:00 2026-09-28 18:21:36+00:00                 2.850000             14.011667                5             5     263.847778
+  SYN-P036              649            11                        30         36.666667 2026-09-02 09:34:03+00:00 2026-09-28 21:24:09+00:00                 3.725000             13.654167               10            10     117.549722
+  SYN-P044              564            11                        30         36.666667 2026-09-01 14:09:23+00:00 2026-09-28 21:19:26+00:00                 3.250000              7.823333                9             9     142.333056
+  SYN-P003             4568            19                        30         63.333333 2026-09-12 00:00:29+00:00 2026-09-30 23:59:56+00:00                 4.300000             11.495000               15             8      13.712500
+  SYN-P021             5729            20                        30         66.666667 2026-09-11 00:00:57+00:00 2026-09-30 23:56:42+00:00                 4.250000             10.251667                9             1      10.050556
+  SYN-P002             6742            22                        30         73.333333 2026-09-09 00:01:34+00:00 2026-09-30 23:46:04+00:00                 3.800000              7.783333               12             7      18.140833
+  SYN-P022             8348            28                        30         93.333333 2026-09-01 00:04:51+00:00 2026-09-30 23:48:28+00:00                 3.666667              9.240000               28            13      26.679167
+  SYN-P039             6538            28                        30         93.333333 2026-09-01 00:04:30+00:00 2026-09-30 23:09:59+00:00                 4.150000             13.210000               25            15      32.421111
+  SYN-P025             6937            29                        30         96.666667 2026-09-01 08:29:32+00:00 2026-09-30 23:56:35+00:00                 4.100000             12.266667               30            16      24.092778
+  SYN-P029             8942            29                        30         96.666667 2026-09-01 00:03:05+00:00 2026-09-30 23:56:48+00:00                 3.966667              8.000000               14             5      30.988333
+
+========================================================================
+5. RESTING DATA AVAILABILITY
+========================================================================
+Patients with fewer than 7 days containing >=10 observations: 1
+Patients with zero usable resting/sleeping observations: 0
+
+Patient resting-data readiness:
+patient_id  days_with_any_resting_sleeping_data  days_with_10plus_observations  total_resting_sleeping_observations  median_observations_per_observed_day
+  SYN-P008                                    6                              4                                  134                                  26.5
+  SYN-P044                                   11                             10                                  296                                  28.0
+  SYN-P036                                   11                             11                                  408                                  38.0
+  SYN-P003                                   19                             19                                 3454                                 176.0
+  SYN-P021                                   20                             20                                 4243                                 217.0
+  SYN-P002                                   22                             22                                 3997                                 194.5
+  SYN-P022                                   28                             28                                 4744                                 172.0
+  SYN-P039                                   28                             28                                 4852                                 165.0
+  SYN-P025                                   29                             29                                 4995                                 164.0
+  SYN-P029                                   29                             29                                 5700                                 200.0
+  SYN-P006                                   29                             29                                 5410                                 202.0
+  SYN-P001                                   29                             29                                 4280                                 152.0
+  SYN-P034                                   29                             29                                 5465                                 217.0
+  SYN-P027                                   30                             29                                 4040                                 144.0
+  SYN-P011                                   30                             30                                 5673                                 198.5
+
+========================================================================
+6. INTERPRETATION NOTES
+========================================================================
+1. The input CSV was not modified.
+2. Plausibility bounds are exploratory filters, not clinical thresholds.
+3. Source context and quality labels may be imperfect.
+4. Duplicate candidates need inspection before any deduplication.
+5. A day with no records is not necessarily a zero-activity day.
+6. Baselines and alerts were not calculated.
+7. Missing expected columns: []
+8. Additional columns: []
+
+Outputs saved in: C:\Users\drish\Desktop\hhr\hhs-v2\heart-health-score\backend\profiling_output

@@ -1,0 +1,17 @@
+parameter,record_type,unit,data_quality,row_count
+active_energy_burned,daily_summary,kcal,questionable,100
+active_energy_burned,daily_summary,kcal,valid,1274
+calories_consumed,nutrition,kcal,questionable,4
+calories_consumed,nutrition,kcal,valid,900
+heart_rate,measurement,bpm,questionable,2034
+heart_rate,measurement,bpm,unavailable,110
+heart_rate,measurement,bpm,valid,360441
+resting_heart_rate,daily_summary,bpm,unavailable,1
+resting_heart_rate,daily_summary,bpm,valid,930
+sleep_session,sleep_session,,questionable,26
+sleep_session,sleep_session,,valid,1393
+steps,daily_summary,count,questionable,101
+steps,daily_summary,count,valid,1417
+total_calories_burned,daily_summary,kcal,questionable,35
+total_calories_burned,daily_summary,kcal,valid,416
+workout,workout,,valid,452

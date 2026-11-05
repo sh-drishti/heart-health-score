@@ -1,0 +1,39 @@
+HEART-RATE PREPARATION REPORT
+==================================================
+Input file: C:\Users\drish\Desktop\hhr\hhs-v2\heart-health-score\backend\synthetic_health_connect_30d.csv
+Original total rows: 369,634
+Heart-rate rows: 362,585
+Patients with HR records: 50
+
+BASELINE CANDIDATE COUNTS
+--------------------------------------------------
+Candidate observations: 248,438
+Non-candidate observations: 114,147
+Known resync duplicate rows: 397
+Exact duplicate candidate rows: 794
+
+QUALITY FLAGS
+--------------------------------------------------
+Rows with one or more flags: 30,373
+Missing/non-numeric HR: 110
+Below exploratory range: 33
+Above exploratory range: 12
+Invalid timestamps: 0
+
+OUTPUTS
+--------------------------------------------------
+- daily_hr_coverage.csv
+- heart_rate_duplicate_candidates.csv
+- heart_rate_excluded.csv
+- heart_rate_prepared.csv
+- patient_hr_readiness.csv
+
+INTERPRETATION NOTES
+--------------------------------------------------
+- Original input CSV was not modified.
+- Excluded records are retained in heart_rate_excluded.csv.
+- Exact duplicate candidates are not automatically deleted.
+- Only records labelled resting/sleeping are initial baseline candidates.
+- Source quality labels and activity context may be imperfect.
+- The 30-220 bpm screen is exploratory, not a clinical threshold.
+- No baseline or clinical alert is calculated by this script.

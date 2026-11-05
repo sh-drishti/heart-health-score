@@ -1,0 +1,17 @@
+column,missing_count,missing_percentage
+patient_id,0,0.0
+record_id,0,0.0
+record_type,0,0.0
+parameter,0,0.0
+value,1982,0.5362060849380739
+unit,1871,0.5061763798784744
+start_timestamp,0,0.0
+end_timestamp,362585,98.09297845977372
+source_app,0,0.0
+source_device,0,0.0
+recorded_timestamp,141,0.03814584156219395
+ingested_timestamp,0,0.0
+activity_context,4247,1.1489743908839556
+data_quality,0,0.0
+notes,366504,99.15321642489597
+value_numeric,1982,0.5362060849380739
