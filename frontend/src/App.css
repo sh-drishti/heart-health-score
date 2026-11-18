@@ -2,11 +2,12 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/manrope";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
-  --font-heading: var(--font-sans);
+  --font-heading: 'Manrope Variable', 'Inter Variable', sans-serif;
   --font-sans: 'Inter Variable', sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -72,7 +73,7 @@
   --chart-3: oklch(0.54 0.07 205);
   --chart-4: oklch(0.46 0.05 210);
   --chart-5: oklch(0.38 0.04 215);
-  --radius: 0.625rem;
+  --radius: 0.25rem;
   --sidebar: oklch(0.945 0.008 245);
   --sidebar-foreground: oklch(0.21 0.02 260);
   --sidebar-primary: oklch(0.59 0.1 192);
@@ -128,3 +129,34 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Heading scale, all Manrope. section-title is the spec the dashboard's main
+ * headings follow (20px / 600 / 36px line); the others step down from it so a
+ * card title never competes with the section it sits in.
+ */
+@utility page-title {
+  font-family: var(--font-heading);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: 0;
+}
+
+@utility section-title {
+  font-family: var(--font-heading);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 36px;
+  letter-spacing: 0;
+  vertical-align: middle;
+}
+
+@utility card-title {
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+  letter-spacing: 0;
+}
+

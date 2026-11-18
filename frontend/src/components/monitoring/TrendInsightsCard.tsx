@@ -14,9 +14,9 @@ export function TrendInsightsCard({
   const progress = insights.positive_progress ?? []
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Trend Insights</CardTitle>
+        <CardTitle>Trend Insights</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {visitCount < 2 ? (

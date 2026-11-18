@@ -88,11 +88,9 @@ function InfoCard({
   style: Style
 }) {
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-1">
-        <CardTitle className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle>{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {fields.map(({ label, column }) => {
@@ -115,9 +113,8 @@ function InfoCard({
 export function AdditionalInfo({ patient }: { patient: Patient }) {
   const names = Object.keys(SECTION_FIELDS)
   return (
-    <div className="mt-8">
-      <h3 className="text-base font-semibold mb-3">Additional Clinical Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 min-[1900px]:grid-cols-4 gap-4 items-stretch">
         <InfoCard title={names[0]} fields={SECTION_FIELDS[names[0]]} patient={patient} style="badge" />
         <InfoCard title={names[2]} fields={SECTION_FIELDS[names[2]]} patient={patient} style="alert" />
         <InfoCard title={names[1]} fields={SECTION_FIELDS[names[1]]} patient={patient} style="history" />

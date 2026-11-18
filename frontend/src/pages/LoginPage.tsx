@@ -7,14 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ThemeToggle } from '@/components/ThemeToggle'
-
-/** Where a role lands after signing in. */
-const HOME: Record<string, string> = {
-  admin: '/admin',
-  clinician: '/dashboard',
-  staff: '/entry',
-  patient: '/my-health',
-}
+import { landingFor } from '@/auth/workspaces'
 
 export function LoginPage() {
   const { user, loading, signIn } = useAuth()
@@ -29,7 +22,7 @@ export function LoginPage() {
   // Already signed in: go where they were headed, or to their role's home.
   if (!loading && user !== null) {
     const from = (location.state as { from?: string } | null)?.from
-    return <Navigate to={from ?? HOME[user.role] ?? '/'} replace />
+    return <Navigate to={landingFor(user.role, from)} replace />
   }
 
   const submit = async (event: React.FormEvent) => {
@@ -39,7 +32,7 @@ export function LoginPage() {
     try {
       const signedIn = await signIn(email, password)
       const from = (location.state as { from?: string } | null)?.from
-      navigate(from ?? HOME[signedIn.role] ?? '/', { replace: true })
+      navigate(landingFor(signedIn.role, from), { replace: true })
     } catch (e) {
       // 401 is a wrong email or password; anything else is the service failing,
       // and saying so avoids sending people to reset a password that is fine.
@@ -62,7 +55,7 @@ export function LoginPage() {
               <HeartPulse className="h-4.5 w-4.5" />
             </span>
             <div>
-              <h1 className="text-base font-semibold tracking-tight leading-tight">
+              <h1 className="font-heading text-base font-bold leading-tight">
                 Healthy Heart Score
               </h1>
               <p className="text-xs text-muted-foreground leading-tight">HHS-v1.2</p>
@@ -74,13 +67,13 @@ export function LoginPage() {
 
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <h2 className="text-xl font-semibold tracking-tight">Sign in</h2>
+          <h2 className="page-title">Sign in</h2>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             Assessing your own heart health?{' '}
             <Link to="/register" className="font-medium text-primary hover:underline">
               Create an account
             </Link>
-            . Clinician and staff accounts are issued by a clinician.
+            . Clinician and staff accounts are issued by an administrator.
           </p>
 
           <form onSubmit={submit} className="mt-6 space-y-4">
@@ -125,6 +118,11 @@ export function LoginPage() {
               )}
             </Button>
           </form>
+
+          <p className="text-xs text-muted-foreground mt-8 leading-relaxed border-t pt-4">
+            Cardiovascular risk assessment on the HHS-v1.2 engine. Research
+            prototype — not validated for clinical decision-making.
+          </p>
         </div>
       </main>
     </div>

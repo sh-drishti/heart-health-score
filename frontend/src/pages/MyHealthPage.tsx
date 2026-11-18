@@ -5,13 +5,8 @@ import { fetchMyDashboard, fetchMyMonitoring, fetchMyNote } from '@/api/client'
 import { ApiError } from '@/api/client'
 import type { DashboardBundle, SavedNote } from '@/types'
 import { AppHeader } from '@/components/AppHeader'
-import { PatientHeader } from '@/components/PatientHeader'
-import { AssessmentAlerts } from '@/components/AssessmentAlerts'
-import { DomainSummary } from '@/components/DomainSummary'
-import { AdditionalInfo } from '@/components/AdditionalInfo'
-import { ParametersTab } from '@/components/ParametersTab'
+import { PatientReport, Section } from '@/components/PatientReport'
 import { buttonVariants } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
 
 /**
@@ -19,8 +14,8 @@ import { cn } from '@/lib/utils'
  * against /me/* instead of a patient id.
  *
  * Deliberately not a mode on DashboardPage — that page owns patient selection,
- * the CSV/MongoDB source switch and the clinician validation panel, none of
- * which apply here. The shared surface is the tabs, not the page shell.
+ * the CSV/MongoDB source switch, the clinician validation panel and the note
+ * editor, none of which apply here. The shared surface is PatientReport.
  */
 export function MyHealthPage() {
   const [bundle, setBundle] = useState<DashboardBundle | null>(null)
@@ -29,7 +24,7 @@ export function MyHealthPage() {
   const [err, setErr] = useState<string | null>(null)
   const [noAssessment, setNoAssessment] = useState(false)
 
-  // ParametersTab takes the loader rather than assuming the clinician route.
+  // The trends take the loader rather than assuming the clinician route.
   // Stable identity, or its effect would refetch on every render.
   const loadMonitoring = useCallback(() => fetchMyMonitoring(), [])
 
@@ -70,20 +65,9 @@ export function MyHealthPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader
-        subtitle="My Heart Health"
-        right={
-          <Link
-            to="/entry"
-            className={buttonVariants({ size: 'sm', variant: 'outline' })}
-          >
-            <ClipboardPlus className="h-4 w-4" />
-            Record a visit
-          </Link>
-        }
-      />
+      <AppHeader subtitle="My Heart Health" />
 
-      <main className="max-w-[1200px] mx-auto px-6 py-5">
+      <main className="px-6 py-5 pb-12">
         {loading && (
           <div className="inline-flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading your score…
@@ -91,17 +75,17 @@ export function MyHealthPage() {
         )}
 
         {err && (
-          <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {err}
           </div>
         )}
 
         {noAssessment && (
-          <div className="rounded-2xl border bg-card p-8 text-center max-w-lg mx-auto mt-8">
-            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-4">
+          <div className="rounded-lg border bg-card p-8 text-center max-w-lg mx-auto mt-8">
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-md bg-primary/10 text-primary mb-4">
               <ClipboardPlus className="h-6 w-6" />
             </span>
-            <h2 className="text-lg font-semibold tracking-tight">
+            <h2 className="section-title">
               Nothing recorded yet
             </h2>
             <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
@@ -117,41 +101,13 @@ export function MyHealthPage() {
         )}
 
         {bundle && (
-          <>
-            <div className="sticky top-[69px] z-10 -mx-2 px-2 py-2 bg-background/90 backdrop-blur">
-              <PatientHeader bundle={bundle} />
-            </div>
-
-            <div className="mt-4">
-              <AssessmentAlerts assessment={bundle.assessment} />
-            </div>
-
-            <Tabs defaultValue="summary" className="mt-4">
-              <TabsList>
-                <TabsTrigger value="summary">Domain Summary</TabsTrigger>
-                <TabsTrigger value="parameters">All Parameters</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="summary" className="mt-4">
-                <DomainSummary
-                  patientData={bundle.patient_data}
-                  assessment={bundle.assessment}
-                />
-                <AdditionalInfo patient={bundle.patient} />
-              </TabsContent>
-
-              <TabsContent value="parameters" className="mt-4">
-                <ParametersTab
-                  patientId={String(bundle.patient.Patient_ID)}
-                  patientData={bundle.patient_data}
-                  assessment={bundle.assessment}
-                  loadMonitoring={loadMonitoring}
-                />
-              </TabsContent>
-            </Tabs>
-
-            {note && <ClinicianNote note={note} />}
-          </>
+          <PatientReport bundle={bundle} loadMonitoring={loadMonitoring}>
+            {note && (
+              <Section title="Note from your clinician">
+                <ClinicianNote note={note} />
+              </Section>
+            )}
+          </PatientReport>
         )}
       </main>
     </div>
@@ -161,18 +117,15 @@ export function MyHealthPage() {
 /** Read-only: a review note is written by a clinician, never by the patient. */
 function ClinicianNote({ note }: { note: SavedNote }) {
   return (
-    <section className="mt-4 rounded-xl border bg-card shadow-xs overflow-hidden">
-      <div className="p-3 border-b flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <StickyNote className="h-3.5 w-3.5" />
-        Note from your clinician
-      </div>
+    <div className="rounded-lg border bg-card shadow-xs overflow-hidden">
       <div className="p-4 space-y-2">
+        <StickyNote className="h-4 w-4 text-primary" />
         <p className="text-sm whitespace-pre-wrap leading-relaxed">{note.note}</p>
         <p className="text-xs text-muted-foreground">
           {note.author ? `${note.author} · ` : ''}
           {new Date(note.updated_at).toLocaleString()}
         </p>
       </div>
-    </section>
+    </div>
   )
 }

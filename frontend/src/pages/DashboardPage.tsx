@@ -3,16 +3,11 @@ import { useSearchParams } from 'react-router-dom'
 import { fetchPatients, fetchDashboard } from '@/api/client'
 import type { DashboardBundle, Source } from '@/types'
 import { PatientDirectory } from '@/components/PatientDirectory'
-import { PatientHeader } from '@/components/PatientHeader'
-import { AssessmentAlerts } from '@/components/AssessmentAlerts'
-import { DomainSummary } from '@/components/DomainSummary'
-import { AdditionalInfo } from '@/components/AdditionalInfo'
+import { PatientReport, Section } from '@/components/PatientReport'
 import { ClinicalValidation } from '@/components/ClinicalValidation'
 import { ClinicalNotes } from '@/components/ClinicalNotes'
-import { ParametersTab } from '@/components/ParametersTab'
 import { AppHeader } from '@/components/AppHeader'
 import { Loader2 } from 'lucide-react'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Select,
   SelectContent,
@@ -20,6 +15,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+
+const SOURCE_LABEL: Record<Source, string> = {
+  csv: 'CSV (internal)',
+  payload: 'MongoDB payload',
+}
 
 export function DashboardPage() {
   // Source and patient live in the URL so the intake page can deep-link a
@@ -74,12 +74,12 @@ export function DashboardPage() {
         subtitle="Clinical Dashboard"
         right={
           <Select value={source} onValueChange={(v) => setSource(v as Source)}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
+            <SelectTrigger className="w-44" aria-label="Data source">
+              <SelectValue>{(v: Source) => SOURCE_LABEL[v]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="csv">CSV (internal)</SelectItem>
-              <SelectItem value="payload">MongoDB payload</SelectItem>
+              <SelectItem value="csv">{SOURCE_LABEL.csv}</SelectItem>
+              <SelectItem value="payload">{SOURCE_LABEL.payload}</SelectItem>
             </SelectContent>
           </Select>
         }
@@ -94,9 +94,9 @@ export function DashboardPage() {
           />
         </aside>
 
-        <main className="flex-1 min-w-0 w-full max-w-[1200px] mx-auto px-6 py-5">
+        <main className="flex-1 min-w-0 w-full px-6 py-5 pb-24">
           {err && (
-            <div className="mb-4 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+            <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               {err}
             </div>
           )}
@@ -107,54 +107,24 @@ export function DashboardPage() {
           )}
 
           {bundle && (
-            <>
-              <div className="sticky top-[69px] lg:top-[69px] z-10 -mx-2 px-2 py-2 bg-background/90 backdrop-blur">
-                <PatientHeader bundle={bundle} />
-              </div>
-
-              <div className="mt-4">
-                <AssessmentAlerts assessment={bundle.assessment} />
-              </div>
-
-              <Tabs defaultValue="summary" className="mt-4">
-                <TabsList>
-                  <TabsTrigger value="summary">Domain Summary</TabsTrigger>
-                  <TabsTrigger value="parameters">All Parameters</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="summary" className="mt-4">
-                  <DomainSummary
-                    patientData={bundle.patient_data}
-                    assessment={bundle.assessment}
-                  />
-                  <AdditionalInfo patient={bundle.patient} />
-                  <ClinicalValidation
-                    patientId={String(bundle.patient.Patient_ID)}
-                    assessment={bundle.assessment}
-                  />
-                </TabsContent>
-
-                <TabsContent value="parameters" className="mt-4">
-                  <ParametersTab
-                    patientId={String(bundle.patient.Patient_ID)}
-                    patientData={bundle.patient_data}
-                    assessment={bundle.assessment}
-                  />
-                </TabsContent>
-              </Tabs>
-            </>
+            <PatientReport bundle={bundle}>
+              <Section title="Clinical Validation">
+                <ClinicalValidation
+                  patientId={String(bundle.patient.Patient_ID)}
+                  assessment={bundle.assessment}
+                />
+              </Section>
+            </PatientReport>
           )}
         </main>
-
-        {bundle && (
-          <aside className="w-full lg:w-80 shrink-0 px-6 lg:px-0 lg:pr-5 pb-5 lg:pb-0 lg:py-5 lg:sticky lg:top-[61px]">
-            <ClinicalNotes
-              patientId={String(bundle.patient.Patient_ID)}
-              initialNote={bundle.clinician_note ?? ''}
-            />
-          </aside>
-        )}
       </div>
+
+      {bundle && (
+        <ClinicalNotes
+          patientId={String(bundle.patient.Patient_ID)}
+          initialNote={bundle.clinician_note ?? ''}
+        />
+      )}
     </div>
   )
 }
