@@ -42,8 +42,14 @@ export function DomainCard({
   const domainSeverity = assessment.domain_severities[officialDomain] ?? 0
 
   return (
-    <Collapsible open={expanded} onOpenChange={onToggle}>
-      <div className="rounded-xl border bg-card shadow-xs transition-shadow hover:shadow-sm">
+    <Collapsible
+      open={expanded}
+      onOpenChange={onToggle}
+      // Open, the card takes the whole row (see DomainSummary); closed, it
+      // fills its grid cell so every card in a row is the same height.
+      className={cn('h-full', expanded && 'col-span-full')}
+    >
+      <div className="h-full rounded-lg border bg-card shadow-xs transition-shadow hover:shadow-sm">
         <CollapsibleTrigger
           render={
             <button className="w-full text-left p-4 cursor-pointer group" />
@@ -53,7 +59,7 @@ export function DomainCard({
             <div className="flex items-start gap-3 min-w-0">
               <SeverityDot level={level} className="mt-1.5 h-2.5 w-2.5 shrink-0" />
               <div className="min-w-0">
-                <h4 className="font-semibold text-sm leading-tight">
+                <h4 className="font-heading font-semibold text-sm leading-tight">
                   {domainName}
                 </h4>
                 <p className="text-xs text-muted-foreground mt-0.5">
@@ -90,7 +96,7 @@ export function DomainCard({
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="px-4 pb-4">
-            <div className="rounded-lg border bg-background overflow-hidden">
+            <div className="rounded-md border bg-background overflow-hidden">
               <ParameterTable features={available} patientData={patientData} />
             </div>
           </div>

@@ -15,14 +15,8 @@ import {
 } from '@/components/ui/chart'
 import type { DomainTrendPoint } from '@/types'
 import { cn } from '@/lib/utils'
-import { formatAxisDate, formatFullDate } from './format'
-
-// Ten domains, so the five --chart-* tokens are not enough. These are picked to
-// stay distinguishable in both themes.
-const PALETTE = [
-  '#0d9488', '#6366f1', '#f59e0b', '#8b5cf6', '#0ea5e9',
-  '#f43f5e', '#84cc16', '#ec4899', '#14b8a6', '#64748b',
-]
+import { axisDateFormatter, formatFullDate } from './format'
+import { DOMAIN_PASTELS as PALETTE, MAX_DOTS } from './palette'
 
 // Domain names contain spaces and slashes; ChartContainer turns config keys into
 // `--color-<key>` CSS variables, so they have to be identifier-safe.
@@ -72,6 +66,8 @@ export function DomainTrendChart({
     return { config, keys, rows }
   }, [domainTrends])
 
+  const tickFormatter = useMemo(() => axisDateFormatter(rows.map((r) => r.date)), [rows])
+
   // Default to the four highest-burden domains; ten lines at once is unreadable.
   const [hidden, setHidden] = useState<Set<string>>(
     () => new Set(keys.slice(4).map((k) => k.key)),
@@ -88,14 +84,14 @@ export function DomainTrendChart({
   const visible = keys.filter((k) => !hidden.has(k.key))
 
   return (
-    <Card>
+    <Card className="h-full">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Domain Burden Trend</CardTitle>
+        <CardTitle>Domain Burden Trend</CardTitle>
         <CardDescription>
           Total contribution per domain across visits. Lower is better.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-1 flex-col">
         <div className="flex flex-wrap gap-1.5 mb-4">
           {keys.map(({ key, domain, color }) => {
             const on = !hidden.has(key)
@@ -106,7 +102,7 @@ export function DomainTrendChart({
                 onClick={() => toggle(key)}
                 aria-pressed={on}
                 className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs transition-colors',
+                  'inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs transition-colors cursor-pointer',
                   on
                     ? 'bg-muted/60 text-foreground'
                     : 'text-muted-foreground opacity-60 hover:opacity-100',
@@ -122,7 +118,7 @@ export function DomainTrendChart({
           })}
         </div>
 
-        <ChartContainer config={config} className="aspect-auto h-[280px] w-full">
+        <ChartContainer config={config} className="aspect-auto min-h-[260px] flex-1 w-full">
           <LineChart accessibilityLayer data={rows} margin={{ left: 12, right: 12 }}>
             <CartesianGrid vertical={false} />
             <XAxis
@@ -131,7 +127,7 @@ export function DomainTrendChart({
               axisLine={false}
               tickMargin={8}
               minTickGap={24}
-              tickFormatter={formatAxisDate}
+              tickFormatter={tickFormatter}
             />
             <YAxis tickLine={false} axisLine={false} tickMargin={8} width={36} />
             <ChartTooltip
@@ -164,8 +160,9 @@ export function DomainTrendChart({
                 dataKey={key}
                 type="monotone"
                 stroke={`var(--color-${key})`}
-                strokeWidth={2}
-                dot={rows.length <= 12}
+                strokeWidth={2.5}
+                dot={rows.length <= MAX_DOTS ? { r: 3, strokeWidth: 2 } : false}
+                activeDot={{ r: 5 }}
                 connectNulls
               />
             ))}

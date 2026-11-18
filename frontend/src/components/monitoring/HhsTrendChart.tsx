@@ -14,11 +14,12 @@ import {
   type ChartConfig,
 } from '@/components/ui/chart'
 import type { HhsTrendPoint } from '@/types'
-import { formatAxisDate, formatFullDate } from './format'
+import { axisDateFormatter, formatFullDate } from './format'
+import { CONFIDENCE_PASTEL, HHS_PASTEL, MAX_DOTS } from './palette'
 
 const chartConfig = {
-  hhs: { label: 'Heart Health Score', color: 'var(--chart-1)' },
-  confidence: { label: 'Data Confidence', color: 'var(--chart-3)' },
+  hhs: { label: 'Heart Health Score', color: HHS_PASTEL },
+  confidence: { label: 'Data Confidence', color: CONFIDENCE_PASTEL },
 } satisfies ChartConfig
 
 type Metric = keyof typeof chartConfig
@@ -29,12 +30,13 @@ export function HhsTrendChart({ trend }: { trend: HhsTrendPoint[] }) {
   // Both series are 0-100, so a fixed domain keeps the vertical scale
   // comparable when toggling between them.
   const latest = useMemo(() => trend[trend.length - 1], [trend])
+  const tickFormatter = useMemo(() => axisDateFormatter(trend.map((p) => p.date)), [trend])
 
   return (
-    <Card className="py-4 sm:py-0">
+    <Card className="h-full py-4 sm:py-0">
       <CardHeader className="flex flex-col items-stretch border-b p-0! sm:flex-row">
         <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
-          <CardTitle className="text-base">Heart Health Score Trend</CardTitle>
+          <CardTitle>Heart Health Score Trend</CardTitle>
           <CardDescription>
             {trend.length === 1
               ? 'One recorded visit — a trend appears from the second visit onward.'
@@ -47,21 +49,21 @@ export function HhsTrendChart({ trend }: { trend: HhsTrendPoint[] }) {
               key={metric}
               type="button"
               data-active={active === metric}
-              className="flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-t-0 sm:border-l sm:px-8 sm:py-4"
+              className="flex flex-1 flex-col justify-center gap-1 border-t px-5 py-4 text-left even:border-l data-[active=true]:bg-muted/50 sm:border-t-0 sm:border-l sm:px-6 sm:py-4 cursor-pointer"
               onClick={() => setActive(metric)}
             >
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 {chartConfig[metric].label}
               </span>
-              <span className="text-lg leading-none font-bold sm:text-2xl tabular-nums">
+              <span className="font-heading text-lg leading-none font-bold sm:text-2xl tabular-nums">
                 {latest?.[metric]?.toFixed(1) ?? '--'}
               </span>
             </button>
           ))}
         </div>
       </CardHeader>
-      <CardContent className="px-2 sm:p-6">
-        <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
+      <CardContent className="flex flex-1 flex-col px-2 sm:p-6">
+        <ChartContainer config={chartConfig} className="aspect-auto min-h-[260px] flex-1 w-full">
           <LineChart accessibilityLayer data={trend} margin={{ left: 12, right: 12 }}>
             <CartesianGrid vertical={false} />
             <XAxis
@@ -70,7 +72,7 @@ export function HhsTrendChart({ trend }: { trend: HhsTrendPoint[] }) {
               axisLine={false}
               tickMargin={8}
               minTickGap={24}
-              tickFormatter={formatAxisDate}
+              tickFormatter={tickFormatter}
             />
             <YAxis
               domain={[0, 100]}
@@ -107,8 +109,9 @@ export function HhsTrendChart({ trend }: { trend: HhsTrendPoint[] }) {
               dataKey={active}
               type="monotone"
               stroke={`var(--color-${active})`}
-              strokeWidth={2}
-              dot={trend.length <= 12}
+              strokeWidth={2.5}
+              dot={trend.length <= MAX_DOTS ? { r: 3, strokeWidth: 2 } : false}
+              activeDot={{ r: 5 }}
             />
           </LineChart>
         </ChartContainer>

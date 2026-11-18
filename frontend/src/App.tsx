@@ -3,7 +3,6 @@ import './App.css'
 import { AppHeader } from '@/components/AppHeader'
 import { AuthProvider } from '@/auth/AuthContext'
 import { RequireAuth } from '@/auth/RequireAuth'
-import { LandingPage } from '@/pages/LandingPage'
 import { LoginPage } from '@/pages/LoginPage'
 import { RegisterPage } from '@/pages/RegisterPage'
 import { DashboardPage } from '@/pages/DashboardPage'
@@ -11,6 +10,8 @@ import { AdminPage } from '@/pages/AdminPage'
 import { MyHealthPage } from '@/pages/MyHealthPage'
 import { IntakePage } from '@/pages/IntakePage'
 import { useAuth } from '@/auth/AuthContext'
+import { HOME } from '@/auth/workspaces'
+import { Loader2 } from 'lucide-react'
 import { EcgPage } from '@/ecg/EcgPage'
 // Temporary: the additional-parameter collection programme. Delete this import,
 // the /collect route below, and src/collection/ to remove it.
@@ -39,12 +40,31 @@ function IntakeLayout() {
   )
 }
 
+/**
+ * `/` has no page of its own. Which workspace someone needs follows from their
+ * account, so a signed-out visitor goes to sign in (which links to sign-up) and
+ * a signed-in one goes straight to their role's home.
+ */
+function Home() {
+  const { user, loading } = useAuth()
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  return <Navigate to={user ? HOME[user.role] : '/login'} replace />
+}
+
 function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <Routes>
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<Home />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/collect" element={<CollectPage />} />

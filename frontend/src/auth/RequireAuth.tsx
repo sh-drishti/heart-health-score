@@ -2,6 +2,7 @@ import { Link, Navigate, useLocation } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { useAuth } from './AuthContext'
 import type { Role } from '@/types'
+import { HOME } from './workspaces'
 
 /**
  * Route guard. Sends unauthenticated visitors to /login, and signed-in users
@@ -40,14 +41,6 @@ export function RequireAuth({
   }
 
   return <>{children}</>
-}
-
-/** Where a role belongs, so this screen can offer a way out rather than a dead end. */
-const HOME: Record<Role, string> = {
-  admin: '/admin',
-  clinician: '/dashboard',
-  staff: '/entry',
-  patient: '/my-health',
 }
 
 function WrongRole({ role }: { role: Role }) {

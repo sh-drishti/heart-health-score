@@ -100,22 +100,21 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
     existing.calculated_hhs !== assessment.hhs
 
   return (
-    <div className="mt-8">
-      <h3 className="text-lg font-semibold mb-4">Clinical Validation</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
+    <div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-stretch">
+        <Card className="h-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Assessment Review</CardTitle>
+            <CardTitle>Assessment Review</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-8">
               <div>
                 <div className="text-xs text-muted-foreground">Calculated HHS</div>
-                <div className="text-2xl font-bold">{assessment.hhs}</div>
+                <div className="font-heading text-2xl font-bold">{assessment.hhs}</div>
               </div>
               <div>
                 <div className="text-xs text-muted-foreground">Confidence</div>
-                <div className="text-2xl font-bold">{assessment.confidence_label}</div>
+                <div className="font-heading text-2xl font-bold">{assessment.confidence_label}</div>
               </div>
             </div>
 
@@ -200,9 +199,9 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="h-full">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">Healthy Heart Score Guide</CardTitle>
+            <CardTitle>Healthy Heart Score Guide</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>

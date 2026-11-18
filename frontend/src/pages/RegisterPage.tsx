@@ -12,7 +12,7 @@ import { ThemeToggle } from '@/components/ThemeToggle'
  * Open sign-up, for someone assessing their own heart health.
  *
  * Only creates patient accounts — role and patient id are decided server-side.
- * Clinician and staff accounts still come from a clinician or seed_users.py.
+ * Clinician and staff accounts are issued by an administrator.
  */
 export function RegisterPage() {
   const { user, loading } = useAuth()
@@ -62,7 +62,7 @@ export function RegisterPage() {
               <HeartPulse className="h-4.5 w-4.5" />
             </span>
             <div>
-              <h1 className="text-base font-semibold tracking-tight leading-tight">
+              <h1 className="font-heading text-base font-bold leading-tight">
                 Healthy Heart Score
               </h1>
               <p className="text-xs text-muted-foreground leading-tight">HHS-v1.2</p>
@@ -74,7 +74,7 @@ export function RegisterPage() {
 
       <main className="flex-1 flex items-center justify-center px-6 py-12">
         <div className="w-full max-w-sm">
-          <h2 className="text-xl font-semibold tracking-tight">Create your account</h2>
+          <h2 className="page-title">Create your account</h2>
           <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">
             Record what you know about your heart health and get a score. Fill in
             as much or as little as you have — the score reports how confident it

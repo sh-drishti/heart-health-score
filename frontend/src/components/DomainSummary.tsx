@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import type { Assessment, PatientData } from '@/types'
 import { DOMAINS, type SeverityLevel } from '@/config/domains'
 import { DomainCard } from './DomainCard'
@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Filter = 'All' | 'Risk' | 'Borderline' | 'Normal'
@@ -19,6 +20,8 @@ type SortMode = 'priority' | 'weight'
 interface Props {
   patientData: PatientData
   assessment: Assessment
+  /** Rendered at the end of the toolbar, e.g. the "All parameters" button. */
+  actions?: ReactNode
 }
 
 function getDomainSeverity(features: string[], patientData: PatientData): number {
@@ -37,8 +40,16 @@ const FILTERS: { value: Filter; label: string; level?: SeverityLevel }[] = [
   { value: 'Normal', label: 'Normal', level: 'ok' },
 ]
 
-export function DomainSummary({ patientData, assessment }: Props) {
-  const [expandAll, setExpandAll] = useState(false)
+// "priority": domains with a parameter at risk first, then borderline, then
+// normal; ties broken by weight. "weight": the domain's fixed weight in the
+// HHS formula, i.e. how much of the score it can move, regardless of this
+// patient's values.
+const SORT_LABEL: Record<SortMode, string> = {
+  priority: 'Sort: most at risk first',
+  weight: 'Sort: biggest weight in score',
+}
+
+export function DomainSummary({ patientData, assessment, actions }: Props) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({})
   const [sortMode, setSortMode] = useState<SortMode>('priority')
   const [filter, setFilter] = useState<Filter>('All')
@@ -56,7 +67,10 @@ export function DomainSummary({ patientData, assessment }: Props) {
     })
   }, [sortMode, patientData])
 
+  // A domain with none of its parameters on file renders nothing (see
+  // DomainCard), so it must not count towards "everything is expanded".
   const filtered = ordered.filter(([, info]) => {
+    if (!info.features.some((f) => f in patientData)) return false
     if (filter === 'All') return true
     const sev = getDomainSeverity(info.features, patientData)
     if (filter === 'Risk') return sev === 1
@@ -64,18 +78,22 @@ export function DomainSummary({ patientData, assessment }: Props) {
     return sev === 0
   })
 
-  const isOpen = (name: string) => openMap[name] ?? expandAll
+  const isOpen = (name: string) => openMap[name] ?? false
+  const allOpen = filtered.length > 0 && filtered.every(([name]) => isOpen(name))
+
+  const toggleAll = () =>
+    setOpenMap(Object.fromEntries(filtered.map(([name]) => [name, !allOpen])))
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-5">
-        <div className="inline-flex items-center rounded-lg border bg-card p-0.5">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 mb-4">
+        <div className="inline-flex items-center rounded-md border bg-card p-0.5">
           {FILTERS.map((f) => (
             <button
               key={f.value}
               onClick={() => setFilter(f.value)}
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer',
+                'inline-flex items-center gap-1.5 rounded-sm px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer',
                 filter === f.value
                   ? 'bg-primary text-primary-foreground shadow-xs'
                   : 'text-muted-foreground hover:text-foreground',
@@ -88,47 +106,46 @@ export function DomainSummary({ patientData, assessment }: Props) {
         </div>
 
         <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-          <SelectTrigger className="w-52 h-8! text-xs">
-            <SelectValue placeholder="Sort Domains By" />
+          <SelectTrigger className="w-60 h-8! text-xs" aria-label="Sort domains">
+            <SelectValue>{(v: SortMode) => SORT_LABEL[v]}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="priority">Clinical Priority</SelectItem>
-            <SelectItem value="weight">HHS Report Weight</SelectItem>
+            <SelectItem value="priority">{SORT_LABEL.priority}</SelectItem>
+            <SelectItem value="weight">{SORT_LABEL.weight}</SelectItem>
           </SelectContent>
         </Select>
 
-        <div className="flex gap-2 ml-auto">
+        <div className="flex items-center gap-2 ml-auto">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             className="text-xs"
-            onClick={() => {
-              setExpandAll(true)
-              setOpenMap({})
-            }}
+            onClick={toggleAll}
+            disabled={filtered.length === 0}
           >
-            Expand All
+            {allOpen ? (
+              <>
+                <ChevronsDownUp className="h-3.5 w-3.5" /> Collapse all
+              </>
+            ) : (
+              <>
+                <ChevronsUpDown className="h-3.5 w-3.5" /> Expand all
+              </>
+            )}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-xs"
-            onClick={() => {
-              setExpandAll(false)
-              setOpenMap({})
-            }}
-          >
-            Collapse All
-          </Button>
+          {actions}
         </div>
       </div>
 
       {filtered.length === 0 ? (
         <p className="text-muted-foreground py-10 text-center text-sm">
-          No {filter.toLowerCase()} domains found.
+          No {filter === 'All' ? '' : `${filter.toLowerCase()} `}domains found.
         </p>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+        // Collapsed cards share a row and stretch to one height. An expanded
+        // card takes a whole row, so it never leaves a neighbour stretched or
+        // a hole beside it; dense packing lets later cards close the gap.
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(22rem,100%),1fr))] grid-flow-row-dense gap-3 items-stretch">
           {filtered.map(([name, info]) => (
             <DomainCard
               key={name}
