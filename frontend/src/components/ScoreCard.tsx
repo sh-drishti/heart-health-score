@@ -47,7 +47,7 @@ export function ScoreCard({ bundle }: { bundle: DashboardBundle }) {
       </div>
 
       <div className="p-4">
-        <div className="text-xs text-muted-foreground">Healthy Heart Score</div>
+        <div className="text-xs text-muted-foreground">Heart Health Score</div>
         <div className="flex items-baseline gap-1.5 mt-1">
           <span className="font-heading text-4xl font-bold tabular-nums">{assessment.hhs}</span>
           <span className="text-sm text-muted-foreground">/ 100</span>

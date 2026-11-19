@@ -84,6 +84,18 @@
   --sidebar-ring: oklch(0.65 0.08 195);
 }
 
+/* Height of AppHeader: a 4rem row, plus a 2.5rem nav row below xl (every
+   role has at least two workspaces, so that row is always there), plus its
+   1px bottom border. Sticky panels sit just below it. */
+:root {
+  --header-h: calc(6.5rem + 1px);
+}
+@media (min-width: 80rem) {
+  :root {
+    --header-h: calc(4rem + 1px);
+  }
+}
+
 .dark {
   --background: oklch(0.19 0.012 255);
   --foreground: oklch(0.94 0.008 240);

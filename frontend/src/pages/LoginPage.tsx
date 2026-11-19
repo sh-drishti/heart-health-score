@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { HeartPulse, Loader2 } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { useAuth } from '@/auth/AuthContext'
 import { ApiError } from '@/api/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ThemeToggle } from '@/components/ThemeToggle'
+import { APP_NAME, Brand } from '@/components/Brand'
 import { landingFor } from '@/auth/workspaces'
 
 export function LoginPage() {
@@ -49,18 +50,10 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <header className="border-b bg-card/80 backdrop-blur">
-        <div className="max-w-[1100px] mx-auto px-6 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <HeartPulse className="h-4.5 w-4.5" />
-            </span>
-            <div>
-              <h1 className="font-heading text-base font-bold leading-tight">
-                Healthy Heart Score
-              </h1>
-              <p className="text-xs text-muted-foreground leading-tight">HHS-v1.2</p>
-            </div>
-          </div>
+        <div className="max-w-[1100px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+          <Link to="/" className="min-w-0" aria-label={`${APP_NAME} home`}>
+            <Brand />
+          </Link>
           <ThemeToggle />
         </div>
       </header>

@@ -107,7 +107,7 @@ export function EcgPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader subtitle="ECG Interpretation" />
+      <AppHeader />
       <main className="max-w-[900px] mx-auto px-6 py-8">
         <div className="mb-7">
           <h1 className="text-2xl font-semibold tracking-tight mb-1.5">

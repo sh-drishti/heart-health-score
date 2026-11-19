@@ -26,13 +26,9 @@ import { ReviewPage } from '@/collection/ReviewPage'
 // The guards mirror the roles the API enforces (see backend/main.py), so a user
 // never reaches a view whose every request would come back 403.
 function IntakeLayout() {
-  const { user } = useAuth()
-
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader
-        subtitle={user?.role === 'patient' ? 'Record a Visit' : 'Encounter Entry'}
-      />
+      <AppHeader />
       <main className="max-w-[1600px] mx-auto px-6 py-5">
         <IntakePage />
       </main>

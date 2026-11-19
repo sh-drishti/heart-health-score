@@ -4,18 +4,10 @@ import { DOMAINS, type SeverityLevel } from '@/config/domains'
 import { DomainCard } from './DomainCard'
 import { SeverityDot } from './SeverityBadge'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Filter = 'All' | 'Risk' | 'Borderline' | 'Normal'
-type SortMode = 'priority' | 'weight'
 
 interface Props {
   patientData: PatientData
@@ -40,32 +32,22 @@ const FILTERS: { value: Filter; label: string; level?: SeverityLevel }[] = [
   { value: 'Normal', label: 'Normal', level: 'ok' },
 ]
 
-// "priority": domains with a parameter at risk first, then borderline, then
-// normal; ties broken by weight. "weight": the domain's fixed weight in the
-// HHS formula, i.e. how much of the score it can move, regardless of this
-// patient's values.
-const SORT_LABEL: Record<SortMode, string> = {
-  priority: 'Sort: most at risk first',
-  weight: 'Sort: biggest weight in score',
-}
-
 export function DomainSummary({ patientData, assessment, actions }: Props) {
   const [openMap, setOpenMap] = useState<Record<string, boolean>>({})
-  const [sortMode, setSortMode] = useState<SortMode>('priority')
   const [filter, setFilter] = useState<Filter>('All')
 
-  const ordered = useMemo(() => {
-    const entries = Object.entries(DOMAINS)
-    if (sortMode === 'weight') {
-      return entries.sort((a, b) => b[1].weight - a[1].weight)
-    }
-    return entries.sort((a, b) => {
-      const sevDiff =
-        getDomainSeverity(b[1].features, patientData) -
-        getDomainSeverity(a[1].features, patientData)
-      return sevDiff !== 0 ? sevDiff : b[1].weight - a[1].weight
-    })
-  }, [sortMode, patientData])
+  // Domains with a parameter at risk first, then borderline, then normal; ties
+  // go to the domain with the larger weight in the HHS formula.
+  const ordered = useMemo(
+    () =>
+      Object.entries(DOMAINS).sort((a, b) => {
+        const sevDiff =
+          getDomainSeverity(b[1].features, patientData) -
+          getDomainSeverity(a[1].features, patientData)
+        return sevDiff !== 0 ? sevDiff : b[1].weight - a[1].weight
+      }),
+    [patientData],
+  )
 
   // A domain with none of its parameters on file renders nothing (see
   // DomainCard), so it must not count towards "everything is expanded".
@@ -104,16 +86,6 @@ export function DomainSummary({ patientData, assessment, actions }: Props) {
             </button>
           ))}
         </div>
-
-        <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
-          <SelectTrigger className="w-60 h-8! text-xs" aria-label="Sort domains">
-            <SelectValue>{(v: SortMode) => SORT_LABEL[v]}</SelectValue>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="priority">{SORT_LABEL.priority}</SelectItem>
-            <SelectItem value="weight">{SORT_LABEL.weight}</SelectItem>
-          </SelectContent>
-        </Select>
 
         <div className="flex items-center gap-2 ml-auto">
           <Button

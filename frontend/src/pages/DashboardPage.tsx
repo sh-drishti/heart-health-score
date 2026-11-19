@@ -71,7 +71,6 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-background">
       <AppHeader
-        subtitle="Clinical Dashboard"
         right={
           <Select value={source} onValueChange={(v) => setSource(v as Source)}>
             <SelectTrigger className="w-44" aria-label="Data source">
@@ -86,7 +85,7 @@ export function DashboardPage() {
       />
 
       <div className="flex flex-col lg:flex-row items-start">
-        <aside className="w-full lg:w-64 shrink-0 bg-card border-b lg:border-b-0 lg:border-r max-h-72 lg:max-h-none lg:sticky lg:top-[61px] lg:h-[calc(100vh-61px)]">
+        <aside className="w-full lg:w-64 shrink-0 bg-card border-b lg:border-b-0 lg:border-r max-h-72 lg:max-h-none lg:sticky lg:top-(--header-h) lg:h-[calc(100vh-var(--header-h))]">
           <PatientDirectory
             patientIds={ids}
             selectedPatient={selectedPatient}

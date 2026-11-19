@@ -21,7 +21,7 @@ interface Props {
 export function ScorePreview({ assessment, scoring, error }: Props) {
   if (error) {
     return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
         {error}
       </div>
     )
@@ -29,7 +29,7 @@ export function ScorePreview({ assessment, scoring, error }: Props) {
 
   if (!assessment) {
     return (
-      <div className="rounded-xl border bg-card px-4 py-6 text-sm text-muted-foreground text-center">
+      <div className="rounded-lg border bg-card px-4 py-6 text-sm text-muted-foreground text-center">
         {scoring ? (
           <span className="inline-flex items-center gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Scoring…
@@ -46,7 +46,7 @@ export function ScorePreview({ assessment, scoring, error }: Props) {
   const suppressed = assessment.red_flags.some((f) => f.suppress_score)
 
   return (
-    <div className="rounded-xl border bg-card shadow-xs overflow-hidden">
+    <div className="rounded-lg border bg-card shadow-xs overflow-hidden">
       <div className="px-4 py-3 border-b flex items-center justify-between">
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           Live Assessment
