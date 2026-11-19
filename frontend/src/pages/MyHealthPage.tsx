@@ -65,7 +65,7 @@ export function MyHealthPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader subtitle="My Heart Health" />
+      <AppHeader />
 
       <main className="px-6 py-5 pb-12">
         {loading && (

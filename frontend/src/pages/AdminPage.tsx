@@ -66,16 +66,16 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <AppHeader subtitle="Account Administration" />
+      <AppHeader />
 
       <main className="max-w-[1100px] mx-auto px-6 py-6 space-y-6">
         {err && (
-          <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+          <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {err}
           </div>
         )}
         {notice && (
-          <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-4 py-3 text-sm">
             {notice}
           </div>
         )}
@@ -99,7 +99,7 @@ export function AdminPage() {
             {loading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
           </div>
 
-          <div className="rounded-xl border bg-card overflow-hidden">
+          <div className="rounded-lg border bg-card overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -198,7 +198,7 @@ function CreateAccountForm({
 
   if (!open) {
     return (
-      <div className="flex items-center justify-between gap-4 rounded-xl border bg-card px-4 py-3">
+      <div className="flex items-center justify-between gap-4 rounded-lg border bg-card px-4 py-3">
         <p className="text-sm text-muted-foreground">
           Clinician, staff and admin accounts are issued here. Patients normally
           register themselves.
@@ -211,7 +211,7 @@ function CreateAccountForm({
   }
 
   return (
-    <form onSubmit={submit} className="rounded-xl border bg-card p-4 space-y-4">
+    <form onSubmit={submit} className="rounded-lg border bg-card p-4 space-y-4">
       <div className="flex items-center gap-2">
         <UserPlus className="h-4 w-4 text-primary" />
         <h2 className="text-sm font-semibold">New account</h2>

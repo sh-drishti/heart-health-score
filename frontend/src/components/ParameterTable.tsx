@@ -29,50 +29,62 @@ export function ParameterTable({ features, patientData }: Props) {
     return ka[0] - kb[0] || ka[1] - kb[1]
   })
 
+  // A container query, not a breakpoint: two cards share a row, so a card can
+  // be narrow on a wide screen. Below 28rem the value moves under the
+  // parameter name instead of taking a column of its own, so nothing scrolls
+  // sideways.
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Parameter</TableHead>
-          <TableHead>Value</TableHead>
-          <TableHead className="text-center w-28">Severity</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {sorted.map((feature) => {
-          const info = patientData[feature]
-          const { value, severity, excel_name, unit } = info
+    <div className="@container">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Parameter</TableHead>
+            <TableHead className="hidden @md:table-cell">Value</TableHead>
+            <TableHead className="text-right w-px">Severity</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {sorted.map((feature) => {
+            const info = patientData[feature]
+            const { value, severity, excel_name, unit } = info
 
-          let level: SeverityLevel
-          let label: string
-          if (value === null || value === undefined) {
-            level = 'neutral'
-            label = 'Missing'
-          } else if (severity === null) {
-            level = 'neutral'
-            label = 'N/A'
-          } else {
-            level = getLevel(severity)
-            label = getLabel(severity)
-          }
+            let level: SeverityLevel
+            let label: string
+            if (value === null || value === undefined) {
+              level = 'neutral'
+              label = 'Missing'
+            } else if (severity === null) {
+              level = 'neutral'
+              label = 'N/A'
+            } else {
+              level = getLevel(severity)
+              label = getLabel(severity)
+            }
 
-          return (
-            <TableRow key={feature}>
-              <TableCell className="font-medium">{excel_name}</TableCell>
-              <TableCell className="tabular-nums">
-                {value === null || value === undefined
-                  ? '--'
-                  : unit
-                    ? `${value} ${unit}`
-                    : String(value)}
-              </TableCell>
-              <TableCell className="text-center">
-                <SeverityBadge level={level} label={label} />
-              </TableCell>
-            </TableRow>
-          )
-        })}
-      </TableBody>
-    </Table>
+            const shown =
+              value === null || value === undefined
+                ? '--'
+                : unit
+                  ? `${value} ${unit}`
+                  : String(value)
+
+            return (
+              <TableRow key={feature}>
+                <TableCell className="font-medium whitespace-normal">
+                  {excel_name}
+                  <div className="@md:hidden mt-0.5 text-xs font-normal text-muted-foreground tabular-nums">
+                    {shown}
+                  </div>
+                </TableCell>
+                <TableCell className="hidden @md:table-cell tabular-nums">{shown}</TableCell>
+                <TableCell className="text-right">
+                  <SeverityBadge level={level} label={label} />
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

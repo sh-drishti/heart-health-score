@@ -72,9 +72,9 @@ export function PatientReport({ bundle, loadMonitoring, children }: Props) {
         {children}
       </div>
 
-      {/* Sticky under the 61px header, and short enough at the bottom to
+      {/* Sticky just under the header, and short enough at the bottom to
           clear the notes bubble. */}
-      <aside className="order-1 xl:order-2 w-full xl:w-80 shrink-0 xl:sticky xl:top-[77px] xl:max-h-[calc(100vh-77px-5.5rem)] xl:overflow-y-auto">
+      <aside className="order-1 xl:order-2 w-full xl:w-80 shrink-0 xl:sticky xl:top-[calc(var(--header-h)+1rem)] xl:max-h-[calc(100vh-var(--header-h)-6.5rem)] xl:overflow-y-auto">
         <ScoreCard bundle={bundle} />
       </aside>
     </div>

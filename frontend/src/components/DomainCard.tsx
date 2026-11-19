@@ -62,10 +62,16 @@ export function DomainCard({
                 <h4 className="font-heading font-semibold text-sm leading-tight">
                   {domainName}
                 </h4>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {available.length} parameter{available.length !== 1 ? 's' : ''}
-                  {' · '}HHS severity {domainSeverity.toFixed(2)}
-                  {' · '}weight {weight}
+                {/* Each fact stays on one line, so a narrow card wraps between
+                    them rather than mid-phrase. */}
+                <p className="text-xs text-muted-foreground mt-0.5 flex flex-wrap gap-x-1">
+                  <span className="whitespace-nowrap">
+                    {available.length} parameter{available.length !== 1 ? 's' : ''} ·
+                  </span>
+                  <span className="whitespace-nowrap">
+                    HHS severity {domainSeverity.toFixed(2)} ·
+                  </span>
+                  <span className="whitespace-nowrap">weight {weight}</span>
                 </p>
               </div>
             </div>

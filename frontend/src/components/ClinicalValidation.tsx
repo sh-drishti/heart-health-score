@@ -120,7 +120,7 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
 
             <div>
               <Label className="mb-2 block">
-                Does the calculated Healthy Heart Score match your clinical assessment?
+                Does the calculated Heart Health Score match your clinical assessment?
               </Label>
               <RadioGroup
                 value={agreement}
@@ -142,7 +142,7 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
               <>
                 <div>
                   <Label htmlFor="doctor-hhs" className="mb-1 block">
-                    Doctor&apos;s Healthy Heart Score
+                    Doctor&apos;s Heart Health Score
                   </Label>
                   <Input
                     id="doctor-hhs"
@@ -201,7 +201,7 @@ export function ClinicalValidation({ patientId, assessment }: Props) {
 
         <Card className="h-full">
           <CardHeader className="pb-2">
-            <CardTitle>Healthy Heart Score Guide</CardTitle>
+            <CardTitle>Heart Health Score Guide</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>

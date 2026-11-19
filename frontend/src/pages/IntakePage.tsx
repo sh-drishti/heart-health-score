@@ -231,7 +231,7 @@ export function IntakePage() {
 
   if (schemaErr) {
     return (
-      <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+      <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
         Could not load the form schema: {schemaErr}
       </div>
     )
@@ -264,7 +264,7 @@ export function IntakePage() {
           {/* Patient & visit metadata */}
           <TabsContent value={VISIT_TAB} className="mt-4">
             {selfMode && prefill && (
-              <div className="mb-4 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
+              <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm">
                 <p className="font-medium">Continuing from your last visit</p>
                 <p className="text-muted-foreground mt-0.5 leading-relaxed">
                   Your previous answers are filled in, and each measurement is
@@ -275,7 +275,7 @@ export function IntakePage() {
               </div>
             )}
 
-            <div className="rounded-xl border bg-card shadow-xs p-4">
+            <div className="rounded-lg border bg-card shadow-xs p-4">
               <h3 className="text-sm font-semibold mb-1">
                 {selfMode ? 'About you' : 'Patient and visit details'}
               </h3>
@@ -564,7 +564,7 @@ export function IntakePage() {
                     {column.map((section) => (
                       <div
                         key={section.section}
-                        className="rounded-xl border bg-card shadow-xs p-4"
+                        className="rounded-lg border bg-card shadow-xs p-4"
                       >
                         <h3 className="text-sm font-semibold mb-3">{section.section}</h3>
                         {section.groups.map((group) => (
@@ -629,7 +629,7 @@ export function IntakePage() {
               </div>
 
               {t.id === 'treatment' && (
-                <div className="rounded-xl border bg-card shadow-xs p-4 mt-4">
+                <div className="rounded-lg border bg-card shadow-xs p-4 mt-4">
                   <h3 className="text-sm font-semibold mb-2">Clinician note</h3>
                   <Textarea
                     value={note}
@@ -644,7 +644,7 @@ export function IntakePage() {
 
           {/* Save */}
           <TabsContent value={SAVE_TAB} className="mt-4">
-            <div className="rounded-xl border bg-card shadow-xs p-4 space-y-4">
+            <div className="rounded-lg border bg-card shadow-xs p-4 space-y-4">
               <div>
                 <h3 className="text-sm font-semibold mb-1">Save assessment</h3>
                 <p className="text-xs text-muted-foreground">
@@ -769,7 +769,7 @@ export function IntakePage() {
         </Tabs>
       </div>
 
-      <aside className="w-full xl:w-80 shrink-0 xl:sticky xl:top-[77px]">
+      <aside className="w-full xl:w-80 shrink-0 xl:sticky xl:top-[calc(var(--header-h)+1rem)]">
         <ScorePreview assessment={assessment} scoring={scoring} error={scoreErr} />
       </aside>
     </div>
