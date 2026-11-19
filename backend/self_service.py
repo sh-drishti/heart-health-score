@@ -17,7 +17,7 @@ lab value would silently claim it was drawn today and overstate confidence.
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from backend import intake
+from backend import intake, profiles
 from backend.payload_convert import LABEL_TO_KEY
 
 SELF_REPORTED = "Self-reported (patient)"
@@ -184,13 +184,22 @@ def save_own_encounter(
     payload = dict(submission)
     payload["visit"] = visit
 
-    # Contact details come from the account, not the request, so a patient
-    # cannot rewrite another person's profile through this path.
+    # Saving an encounter rewrites the patient record's contact sections from
+    # `patient_profile` (database.py's upsert_patient). Whatever the patient
+    # already saved through /me/profile wins, so recording a visit never wipes
+    # their emergency contact or turns notifications back on. The request's
+    # values are used only for a section never saved before, and then the
+    # contact email is the account's, as it always was on this path.
     profile = dict(payload.get("patient_profile") or {})
     profile["name"] = account.get("name") or profile.get("name", "")
-    contact = dict(profile.get("contact") or {})
-    contact["email"] = account.get("email", contact.get("email", ""))
-    profile["contact"] = contact
+    saved = profiles.saved_contact_sections(patient_id)
+    for section in profiles.CONTACT_SECTIONS:
+        if section in saved:
+            profile[section] = saved[section]
+    if "contact" not in saved:
+        contact = dict(profile.get("contact") or {})
+        contact["email"] = account.get("email", contact.get("email", ""))
+        profile["contact"] = contact
     payload["patient_profile"] = profile
 
     # visit_id is freshly generated, so a duplicate is impossible by
