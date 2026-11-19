@@ -215,27 +215,17 @@ class VisitIn(BaseModel):
     reviewed_by: str = ""
 
 
-class ContactIn(BaseModel):
-    email: str = ""
-    phone: str = ""
-
-
-class NotificationPreferencesIn(BaseModel):
-    email: bool = True
-    push: bool = True
-
-
-class EmergencyContactIn(BaseModel):
-    name: str = ""
-    relation: str = ""
-    contact: ContactIn = Field(default_factory=ContactIn)
-
-
 class PatientProfileIn(BaseModel):
+    # The contact shapes are shared with /me/profile (backend/profiles.py), so
+    # both paths store the same document on the patient record.
     name: str = ""
-    contact: ContactIn = Field(default_factory=ContactIn)
-    notification_preferences: NotificationPreferencesIn = Field(default_factory=NotificationPreferencesIn)
-    emergency_contact: EmergencyContactIn = Field(default_factory=EmergencyContactIn)
+    contact: profiles.ContactIn = Field(default_factory=profiles.ContactIn)
+    notification_preferences: profiles.NotificationPreferencesIn = Field(
+        default_factory=profiles.NotificationPreferencesIn
+    )
+    emergency_contact: profiles.EmergencyContactIn = Field(
+        default_factory=profiles.EmergencyContactIn
+    )
 
 
 class SubmissionIn(BaseModel):
@@ -674,6 +664,11 @@ def write_my_profile(
     stored as null, so send everything the app has.
 
     `name`, if sent, renames the account rather than being stored here.
+
+    The contact sections (`contact`, `emergency_contact`,
+    `notification_preferences`) are the exception: a section left out keeps its
+    saved value, and within a section only the keys you send change. Send a
+    section as null to clear it. Notifications are off until turned on.
     """
 
     patient_id = auth.current_patient_id(user)
@@ -704,6 +699,9 @@ def patch_my_profile(
     """
     Send only what changed. A field sent as `null` is cleared, which is how a
     skipped answer is removed; the four required fields cannot be cleared.
+
+    The contact sections change key by key: `{"contact": {"phone": "…"}}`
+    updates the phone and keeps the saved email.
     """
 
     patient_id = auth.current_patient_id(user)

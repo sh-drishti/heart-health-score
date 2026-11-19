@@ -62,8 +62,14 @@ def get_patient_ids(source: str = "csv") -> list:
     if source == "csv":
         return _load_df()["Patient_ID"].tolist()
 
+    # Only patients with at least one visit. A patient record can exist with no
+    # visits (a patient who saved contact details through /me/profile before
+    # recording anything), and there is no dashboard to show for them yet.
+    from database import encounters_collection
+
+    with_visits = set(encounters_collection.distinct("patient_id"))
     repo = EncounterRepository()
-    return repo.get_all_patients()
+    return [pid for pid in repo.get_all_patients() if pid in with_visits]
 
 
 def get_dashboard(patient_id: str, source: str = "csv") -> dict | None:
